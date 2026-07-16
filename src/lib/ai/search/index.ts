@@ -1,29 +1,22 @@
 import type { Locale } from "@/config/site";
 import {
-  getPublicCategories,
-  getPublicGallery,
-  getPublicProducts,
-  getPublicProjects,
-  getHomepageContent,
-  getWebsiteSettings,
-} from "@/lib/queries/cms";
-import { getPublishedContentStrings } from "@/lib/queries/content";
-import {
   buildSettingsSearchContext,
-  CMS_UNAVAILABLE_MESSAGE,
+  CMS_EMPTY_MESSAGE,
   hasCmsSearchHits,
+  isCatalogBrowseQuery,
   searchHomepageContent,
   searchMenuContent,
   searchPublishedContent,
-  type CmsContentMatch,
-  type CmsHomepageMatch,
-  type CmsMenuMatch,
 } from "@/lib/ai/search/cms-content";
 import {
   buildCacheKey,
   getCached,
   setCached,
 } from "@/lib/ai/search/cache";
+import {
+  isCmsCatalogEmpty,
+  loadCmsDataForAi,
+} from "@/lib/ai/search/load-cms-data";
 import {
   scoreCategory,
   scoreGallery,
@@ -46,6 +39,7 @@ import type {
   SearchFilters,
 } from "@/lib/ai/search/types";
 import type { Product } from "@/types/database";
+import { categoryName } from "@/types/database";
 
 const MIN_SCORE = 6;
 const MAX_PRODUCTS = 8;
@@ -130,6 +124,36 @@ function findRelatedProducts(
     );
 }
 
+function buildCatalogSummary(
+  locale: Locale,
+  snapshot: Awaited<ReturnType<typeof loadCmsDataForAi>>,
+): string[] {
+  const lines: string[] = [
+    `Inventory: ${snapshot.products.length} published products (${snapshot.allProducts.length} total including drafts)`,
+    `Categories: ${snapshot.categories.length}`,
+    `Projects: ${snapshot.projects.length}`,
+    `Gallery items: ${snapshot.gallery.length}`,
+  ];
+
+  if (snapshot.categories.length) {
+    lines.push(
+      `Category list: ${snapshot.categories
+        .map((c) => categoryName(c, locale))
+        .join(", ")}`,
+    );
+  }
+
+  if (snapshot.products.length === 0 && snapshot.allProducts.length === 0) {
+    lines.push("Product catalog: no product records exist yet.");
+  } else if (snapshot.products.length === 0) {
+    lines.push(
+      "Product catalog: products exist but none are published/active for the public site.",
+    );
+  }
+
+  return lines;
+}
+
 export async function searchCms(input: SearchInput): Promise<CmsSearchResult> {
   const {
     query,
@@ -139,45 +163,54 @@ export async function searchCms(input: SearchInput): Promise<CmsSearchResult> {
     filters = {},
     favoriteIds = [],
   } = input;
-  const cacheKey = buildCacheKey({ query, locale, mode, module: consultantModule, filters, favoriteIds });
+  const cacheKey = buildCacheKey({
+    v: 2,
+    query,
+    locale,
+    mode,
+    module: consultantModule,
+    filters,
+    favoriteIds,
+  });
   const cached = getCached<CmsSearchResult>(cacheKey);
   if (cached) return cached;
 
-  const [settings, categories, products, projects, gallery, contentStore, homepage] =
-    await Promise.all([
-      getWebsiteSettings(),
-      getPublicCategories(),
-      getPublicProducts(),
-      getPublicProjects(),
-      getPublicGallery(),
-      getPublishedContentStrings(),
-      getHomepageContent(),
-    ]);
+  const snapshot = await loadCmsDataForAi();
+  const {
+    settings,
+    categories,
+    products,
+    projects,
+    gallery,
+    contentStore,
+    homepage,
+  } = snapshot;
 
   const contentStrings = searchPublishedContent(contentStore, locale, query);
   const menuItems = searchMenuContent(contentStore, locale, query);
-  const settingsContext = buildSettingsSearchContext(settings, locale);
+  const settingsContext = [
+    ...buildSettingsSearchContext(settings, locale),
+    ...buildCatalogSummary(locale, snapshot),
+  ];
   const homepageMatches = searchHomepageContent(homepage, locale, query);
-
-  const categoryMap = new Map(categories.map((c) => [c.id, c]));
-  const enrichedProducts = products.map((p) => ({
-    ...p,
-    category: p.category ?? (p.category_id ? categoryMap.get(p.category_id) ?? null : null),
-  }));
 
   const availableProducts =
     filters.availability === "all"
-      ? enrichedProducts
-      : enrichedProducts.filter(
-          (p) => p.is_active && p.status === "published",
-        );
+      ? snapshot.allProducts.filter((p) => p.is_active)
+      : products;
 
   let scoredProducts = availableProducts
     .map((p) => scoreProduct(p, locale, query, filters))
-    .filter((p) => p.score >= (consultantModule === "alternative_products" ? 4 : MIN_SCORE))
+    .filter((p) =>
+      p.score >= (consultantModule === "alternative_products" ? 4 : MIN_SCORE),
+    )
     .sort((a, b) => b.score - a.score);
 
-  const strategy = applyModuleSearchStrategy(consultantModule, scoredProducts, filters);
+  const strategy = applyModuleSearchStrategy(
+    consultantModule,
+    scoredProducts,
+    filters,
+  );
   scoredProducts = strategy.products;
 
   if (favoriteIds.length > 0) {
@@ -185,14 +218,16 @@ export async function searchCms(input: SearchInput): Promise<CmsSearchResult> {
     const favBoost = availableProducts
       .filter((p) => favSet.has(p.id))
       .map((p) =>
-        scoreProduct(
-          p,
-          locale,
-          query || "favorites wishlist",
-          { ...strategy.filters, availability: "available" },
-        ),
+        scoreProduct(p, locale, query || "favorites wishlist", {
+          ...strategy.filters,
+          availability: "available",
+        }),
       )
-      .map((p) => ({ ...p, score: p.score + 15, matchReasons: [...p.matchReasons, "favorite"] }));
+      .map((p) => ({
+        ...p,
+        score: p.score + 15,
+        matchReasons: [...p.matchReasons, "favorite"],
+      }));
     const seen = new Set(favBoost.map((p) => p.id));
     scoredProducts = [
       ...favBoost,
@@ -202,7 +237,14 @@ export async function searchCms(input: SearchInput): Promise<CmsSearchResult> {
 
   if (consultantModule === "cross_sell" && strategy.filters.categories?.length) {
     const extra = availableProducts
-      .map((p) => scoreProduct(p, locale, strategy.filters.categories!.join(" "), strategy.filters))
+      .map((p) =>
+        scoreProduct(
+          p,
+          locale,
+          strategy.filters.categories!.join(" "),
+          strategy.filters,
+        ),
+      )
       .filter((p) => p.score >= 4)
       .sort((a, b) => b.score - a.score);
     const seen = new Set(scoredProducts.map((p) => p.id));
@@ -212,23 +254,79 @@ export async function searchCms(input: SearchInput): Promise<CmsSearchResult> {
     ];
   }
 
-  const scoredCategories = categories
+  let scoredCategories = categories
     .map((c) => scoreCategory(c, locale, query, filters))
     .filter((c) => c.score >= MIN_SCORE)
     .sort((a, b) => b.score - a.score)
     .slice(0, MAX_CATEGORIES);
 
-  const scoredProjects = projects
+  let scoredProjects = projects
     .map((p) => scoreProject(p, locale, query, filters))
     .filter((p) => p.score >= MIN_SCORE)
     .sort((a, b) => b.score - a.score)
     .slice(0, MAX_PROJECTS);
 
-  const scoredGallery = gallery
+  let scoredGallery = gallery
     .map((g) => scoreGallery(g, locale, query, filters))
     .filter((g) => g.score >= MIN_SCORE)
     .sort((a, b) => b.score - a.score)
     .slice(0, MAX_GALLERY);
+
+  const browse = isCatalogBrowseQuery(query) || !query.trim();
+
+  // When browsing / general questions, always expose real CMS inventory.
+  if (browse) {
+    const scoredCatIds = new Set(scoredCategories.map((c) => c.id));
+    for (const c of categories) {
+      if (!scoredCatIds.has(c.id)) {
+        scoredCategories.push({
+          ...c,
+          score: 5,
+          matchReasons: ["catalog"],
+        });
+      }
+    }
+    scoredCategories = scoredCategories.slice(0, MAX_CATEGORIES);
+
+    if (scoredProducts.length === 0 && availableProducts.length > 0) {
+      scoredProducts = availableProducts.slice(0, MAX_PRODUCTS).map((p) => ({
+        ...p,
+        score: 5,
+        matchReasons: ["catalog"],
+      }));
+    }
+    if (scoredProjects.length === 0 && projects.length > 0) {
+      scoredProjects = projects.slice(0, MAX_PROJECTS).map((p) => ({
+        ...p,
+        score: 4,
+        matchReasons: ["catalog"],
+      }));
+    }
+    if (scoredGallery.length === 0 && gallery.length > 0) {
+      scoredGallery = gallery.slice(0, MAX_GALLERY).map((g) => ({
+        ...g,
+        score: 4,
+        matchReasons: ["catalog"],
+      }));
+    }
+  } else if (scoredProducts.length === 0) {
+    // Soft fallback: still surface catalog categories/products so the model
+    // can answer from real CMS data instead of inventing or refusing.
+    if (scoredCategories.length === 0 && categories.length > 0) {
+      scoredCategories = categories.slice(0, MAX_CATEGORIES).map((c) => ({
+        ...c,
+        score: 5,
+        matchReasons: ["catalog"],
+      }));
+    }
+    if (availableProducts.length > 0) {
+      scoredProducts = availableProducts.slice(0, MAX_PRODUCTS).map((p) => ({
+        ...p,
+        score: 5,
+        matchReasons: ["catalog"],
+      }));
+    }
+  }
 
   const productCards = scoredProducts
     .slice(0, MAX_PRODUCTS)
@@ -256,6 +354,7 @@ export async function searchCms(input: SearchInput): Promise<CmsSearchResult> {
 
   const hasExactMatch = productCards.some((p) => p.score >= 20);
   const hasClose = productCards.length > 0;
+  const catalogEmpty = isCmsCatalogEmpty(snapshot);
 
   const result: CmsSearchResult = {
     query,
@@ -282,8 +381,12 @@ export async function searchCms(input: SearchInput): Promise<CmsSearchResult> {
     menuItems,
     settingsContext,
     homepageMatches,
-    cmsUnavailableMessage: null,
-    alternativesMessage: alternativesMessage(locale, hasExactMatch, hasClose),
+    // Never use the old "unavailable" fallback when the query succeeded.
+    // Empty DB → explicit empty message. Otherwise answer from real CMS data.
+    cmsUnavailableMessage: catalogEmpty ? CMS_EMPTY_MESSAGE : null,
+    alternativesMessage: catalogEmpty
+      ? null
+      : alternativesMessage(locale, hasExactMatch, hasClose),
     totalMatches:
       productCards.length +
       relatedProducts.length +
@@ -298,8 +401,13 @@ export async function searchCms(input: SearchInput): Promise<CmsSearchResult> {
       settingsContext.length,
   };
 
-  if (!hasCmsSearchHits(result)) {
-    result.cmsUnavailableMessage = CMS_UNAVAILABLE_MESSAGE;
+  if (!catalogEmpty && !hasCmsSearchHits(result) && !result.companyInfo) {
+    // Extremely rare: settings missing but other empty — still avoid unavailable phrase.
+    result.cmsUnavailableMessage = CMS_EMPTY_MESSAGE;
+  }
+
+  if (snapshot.errors.length) {
+    console.warn("[ai/search] CMS load warnings:", snapshot.errors);
   }
 
   setCached(cacheKey, result);
@@ -310,22 +418,11 @@ export async function searchCmsByProductIds(
   ids: string[],
   locale: Locale,
 ): Promise<CmsSearchResult> {
-  const [settings, categories, products, projects, gallery] = await Promise.all([
-    getWebsiteSettings(),
-    getPublicCategories(),
-    getPublicProducts(),
-    getPublicProjects(),
-    getPublicGallery(),
-  ]);
+  const snapshot = await loadCmsDataForAi();
+  const { settings, products, projects, gallery } = snapshot;
 
-  const categoryMap = new Map(categories.map((c) => [c.id, c]));
   const idSet = new Set(ids);
-  const matched = products
-    .filter((p) => idSet.has(p.id) && p.is_active && p.status === "published")
-    .map((p) => ({
-      ...p,
-      category: p.category ?? (p.category_id ? categoryMap.get(p.category_id) ?? null : null),
-    }));
+  const matched = products.filter((p) => idSet.has(p.id));
 
   const productCards = matched.map((p) =>
     toProductCard({ ...p, score: 30, matchReasons: ["visual_match"] }, locale),
@@ -350,11 +447,12 @@ export async function searchCmsByProductIds(
     ),
     contentStrings: [],
     menuItems: [],
-    settingsContext: buildSettingsSearchContext(settings, locale),
+    settingsContext: [
+      ...buildSettingsSearchContext(settings, locale),
+      ...buildCatalogSummary(locale, snapshot),
+    ],
     homepageMatches: [],
-    cmsUnavailableMessage: productCards.length
-      ? null
-      : CMS_UNAVAILABLE_MESSAGE,
+    cmsUnavailableMessage: isCmsCatalogEmpty(snapshot) ? CMS_EMPTY_MESSAGE : null,
     companyInfo: settings
       ? {
           name: settings.company_name,

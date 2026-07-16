@@ -13,10 +13,13 @@ export const fontDisplay = Cormorant_Garamond({
   display: "swap",
 });
 
+/** Self-hosted Arabic/Kurdish script font — works on all devices including mobile. */
 export const fontArabic = Noto_Sans_Arabic({
   variable: "--font-arabic",
   subsets: ["arabic"],
   display: "swap",
+  adjustFontFallback: false,
+  weight: ["400", "500", "600", "700"],
 });
 
 export const fontVariables = [

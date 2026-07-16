@@ -2,14 +2,12 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-/* Kurdistan24 — local name with Noto Sans Arabic fallback (no font files in /public/fonts) */
-@font-face {
-  font-family: "Kurdistan24";
-  src: local("Kurdistan24"), local("K24"), local("Rudaw");
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-}
+/*
+  Kurdish/Arabic: use self-hosted Noto Sans Arabic (--font-arabic from next/font).
+  Do NOT declare an empty @font-face for "Kurdistan24" with only local() —
+  on phones without that system font, browsers keep a broken face and glyphs
+  render disconnected. Optional local Kurdistan24/Rudaw remain in the stack.
+*/
 
 @custom-variant dark (&:is(.dark *));
 
@@ -19,7 +17,8 @@
   --font-sans: var(--font-english);
   --font-english: var(--font-english);
   --font-arabic: var(--font-arabic);
-  --font-kurdish: "Kurdistan24", var(--font-arabic), ui-sans-serif, system-ui, sans-serif;
+  --font-kurdish: var(--font-arabic), "Kurdistan24", "K24", "Rudaw", "Segoe UI", Tahoma,
+    sans-serif;
   --font-heading: var(--font-english);
   --text-h1: clamp(2rem, 1.5rem + 2.5vw, 3rem);
   --text-h2: clamp(1.75rem, 1.35rem + 2vw, 2.5rem);
@@ -255,6 +254,29 @@
   html[dir="rtl"] {
     direction: rtl;
   }
+  /* Connected Arabic/Kurdish script must not use Latin letter-spacing */
+  html[dir="rtl"] body,
+  html[dir="rtl"] [data-showroom] {
+    letter-spacing: 0;
+    word-spacing: normal;
+  }
+  html[dir="rtl"] h1,
+  html[dir="rtl"] h2,
+  html[dir="rtl"] h3,
+  html[dir="rtl"] h4,
+  html[dir="rtl"] p,
+  html[dir="rtl"] li,
+  html[dir="rtl"] span,
+  html[dir="rtl"] a,
+  html[dir="rtl"] button,
+  html[dir="rtl"] label,
+  html[dir="rtl"] input,
+  html[dir="rtl"] textarea {
+    letter-spacing: 0;
+  }
+  html[dir="rtl"] [class*="tracking-"] {
+    letter-spacing: 0;
+  }
   html[dir="ltr"] {
     direction: ltr;
   }
@@ -275,7 +297,7 @@
     font-family: var(--font-english), ui-sans-serif, system-ui, sans-serif;
   }
   .font-arabic {
-    font-family: var(--font-arabic), ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-arabic), "Segoe UI", Tahoma, sans-serif;
   }
   .font-kurdish,
   .font-rudaw {
@@ -462,6 +484,7 @@
 
   html[dir="rtl"] [data-showroom] {
     font-family: var(--font-kurdish);
+    letter-spacing: 0;
   }
 
   .dark [data-showroom] {

@@ -15,7 +15,7 @@ import {
 } from "@/lib/ai/intent";
 import { checkRateLimit, getClientKey } from "@/lib/ai/rate-limit";
 import { searchCms } from "@/lib/ai/search";
-import { CMS_UNAVAILABLE_MESSAGE } from "@/lib/ai/search/cms-content";
+import { CMS_EMPTY_MESSAGE } from "@/lib/ai/search/cms-content";
 import type { CmsSearchResult } from "@/lib/ai/search/types";
 import { analyzeImageForSearch } from "@/lib/ai/vision";
 import { siteConfig } from "@/config/site";
@@ -133,14 +133,14 @@ export async function POST(request: Request) {
       });
     } catch (searchError) {
       console.error("[api/ai/chat] CMS search failed:", searchError);
-      if (process.env.NODE_ENV === "development") {
-        console.error("[api/ai/chat] Search context:", {
-          query: searchQuery,
-          locale: intent.locale,
-          mode: intent.mode,
-          module: intent.module,
-        });
-      }
+      console.error("[api/ai/chat] Search context:", {
+        query: searchQuery,
+        locale: intent.locale,
+        mode: intent.mode,
+        module: intent.module,
+        geminiConfigured: !!getGeminiApiKey(),
+        hasServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim(),
+      });
       searchResult = {
         query: searchQuery,
         locale: intent.locale,
@@ -159,7 +159,7 @@ export async function POST(request: Request) {
         menuItems: [],
         settingsContext: [],
         homepageMatches: [],
-        cmsUnavailableMessage: CMS_UNAVAILABLE_MESSAGE,
+        cmsUnavailableMessage: CMS_EMPTY_MESSAGE,
         alternativesMessage: null,
         totalMatches: 0,
       };

@@ -98,6 +98,18 @@ export type CmsHomepageMatch = {
 export const CMS_UNAVAILABLE_MESSAGE =
   "This information is not available in the Nova Home Decor CMS.";
 
+/** Used when the CMS has no catalog/company records yet. */
+export const CMS_EMPTY_MESSAGE =
+  "No records exist in the Nova Home Decor CMS yet.";
+
+export function isCatalogBrowseQuery(query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return /product|products|catalog|categor(?:y|ies)|company|contact|address|phone|whatsapp|showroom|nova|inventory|what do you (sell|have)|tell me about|بەرهەم|بەرهەمەکان|پۆل|پۆلەکان|کاتالۆگ|کۆمپانیا|ناونیشان|پەیوەندی|تەلەفۆن|شۆڕوم|منتجات|أقسام|شركة|عنوان|هاتف|معرض/.test(
+    q,
+  );
+}
+
 export function buildSettingsSearchContext(
   settings: WebsiteSettings | null,
   locale: Locale,
@@ -183,6 +195,7 @@ export function hasCmsSearchHits(
     menuItems: unknown[];
     settingsContext: unknown[];
     homepageMatches?: unknown[];
+    companyInfo?: unknown;
   },
 ): boolean {
   return (
@@ -193,6 +206,7 @@ export function hasCmsSearchHits(
     result.contentStrings.length > 0 ||
     result.menuItems.length > 0 ||
     result.settingsContext.length > 0 ||
-    (result.homepageMatches?.length ?? 0) > 0
+    (result.homepageMatches?.length ?? 0) > 0 ||
+    !!result.companyInfo
   );
 }

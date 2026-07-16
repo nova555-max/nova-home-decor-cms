@@ -136,7 +136,14 @@ export function buildChatCmsContext(
 
   if (searchResult.cmsUnavailableMessage) {
     lines.push(
-      `\nCMS DATA STATUS: No matching CMS records for this query. You MUST reply with exactly: "${searchResult.cmsUnavailableMessage}"`,
+      `\nCMS DATA STATUS: ${searchResult.cmsUnavailableMessage}`,
+    );
+    lines.push(
+      "Instruct the customer clearly that the CMS has no records yet. Do not invent catalog items.",
+    );
+  } else {
+    lines.push(
+      "\nCMS DATA STATUS: Live CMS data loaded successfully. Answer using the records above.",
     );
   }
 

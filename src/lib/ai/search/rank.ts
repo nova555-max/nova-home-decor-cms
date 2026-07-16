@@ -31,6 +31,7 @@ function productSearchText(product: Product): string {
     product.description,
     product.seo_title,
     product.seo_description,
+    product.sku,
     product.name_i18n?.ku,
     product.name_i18n?.ar,
     product.name_i18n?.en,

@@ -19,12 +19,16 @@ export function getToastPosition(
   return direction === "rtl" ? "top-left" : "top-right";
 }
 
-/** Body font — Kurdish Sorani uses Arabic script via Noto Sans Arabic */
+/** Body font — ku/ar use Noto Sans Arabic (self-hosted); optional local Kurdistan24 via CSS stack */
 export function getFontClassForLocale(locale: Locale): string {
-  return locale === "en" ? "font-english" : "font-arabic";
+  if (locale === "en") return "font-english";
+  if (locale === "ku") return "font-kurdish";
+  return "font-arabic";
 }
 
 /** Locale switcher labels always use a script-capable font */
 export function getLocaleLabelFontClass(locale: Locale): string {
-  return locale === "en" ? "font-english" : "font-arabic";
+  if (locale === "en") return "font-english";
+  if (locale === "ku") return "font-kurdish";
+  return "font-arabic";
 }
