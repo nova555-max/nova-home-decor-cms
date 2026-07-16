@@ -10,7 +10,7 @@ import { siteConfig } from "@/config/site";
 import { LOCALE_COOKIE_NAME, resolveLocale } from "@/lib/locale-cookie";
 import { appViewport } from "@/lib/pwa/viewport";
 import { getDirectionForLocale, getFontClassForLocale } from "@/lib/rtl";
-import { fontVariables } from "@/lib/fonts";
+import { fontRudaw, fontVariables } from "@/lib/fonts";
 import { themeFoocScript } from "@/lib/theme/fooc-script";
 
 import "./globals.css";
@@ -64,7 +64,7 @@ export default async function RootLayout({
       </head>
       <body
         dir={initialDirection}
-        className={`${fontVariables} ${initialFontClass} antialiased`}
+        className={`${fontVariables} ${fontRudaw.className} ${initialFontClass} antialiased`}
       >
         <AppProviders initialLocale={initialLocale}>
           <TooltipProvider>

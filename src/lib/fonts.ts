@@ -1,29 +1,31 @@
-import { Cormorant_Garamond, Inter, Noto_Sans_Arabic } from "next/font/google";
+import localFont from "next/font/local";
 
-export const fontEnglish = Inter({
-  variable: "--font-english",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-export const fontDisplay = Cormorant_Garamond({
-  variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  display: "swap",
-});
-
-/** Self-hosted Arabic/Kurdish script font — works on all devices including mobile. */
-export const fontArabic = Noto_Sans_Arabic({
-  variable: "--font-arabic",
-  subsets: ["arabic"],
+/**
+ * Single system font: Rudaw (self-hosted for desktop + mobile).
+ * One face for admin, public site, all locales and headings.
+ */
+export const fontRudaw = localFont({
+  src: [
+    {
+      path: "../../public/fonts/rudaw/Rudaw-Regular.woff2",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "../../public/fonts/rudaw/Rudaw-Regular.ttf",
+      weight: "400",
+      style: "normal",
+    },
+  ],
+  variable: "--font-rudaw",
   display: "swap",
   adjustFontFallback: false,
-  weight: ["400", "500", "600", "700"],
+  fallback: ["Tahoma", "Segoe UI", "Arial", "sans-serif"],
 });
 
-export const fontVariables = [
-  fontEnglish.variable,
-  fontDisplay.variable,
-  fontArabic.variable,
-].join(" ");
+/** Aliases — all point to Rudaw so legacy class names stay consistent */
+export const fontEnglish = fontRudaw;
+export const fontDisplay = fontRudaw;
+export const fontArabic = fontRudaw;
+
+export const fontVariables = fontRudaw.variable;

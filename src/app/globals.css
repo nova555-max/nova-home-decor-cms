@@ -3,10 +3,8 @@
 @import "shadcn/tailwind.css";
 
 /*
-  Kurdish/Arabic: use self-hosted Noto Sans Arabic (--font-arabic from next/font).
-  Do NOT declare an empty @font-face for "Kurdistan24" with only local() —
-  on phones without that system font, browsers keep a broken face and glyphs
-  render disconnected. Optional local Kurdistan24/Rudaw remain in the stack.
+  System-wide font: Rudaw (self-hosted in /public/fonts/rudaw).
+  Same face for admin, public site, desktop, and mobile — no locale font splits.
 */
 
 @custom-variant dark (&:is(.dark *));
@@ -14,12 +12,12 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-english);
-  --font-english: var(--font-english);
-  --font-arabic: var(--font-arabic);
-  --font-kurdish: var(--font-arabic), "Kurdistan24", "K24", "Rudaw", "Segoe UI", Tahoma,
-    sans-serif;
-  --font-heading: var(--font-english);
+  --font-sans: var(--font-rudaw);
+  --font-english: var(--font-rudaw);
+  --font-arabic: var(--font-rudaw);
+  --font-kurdish: var(--font-rudaw);
+  --font-display: var(--font-rudaw);
+  --font-heading: var(--font-rudaw);
   --text-h1: clamp(2rem, 1.5rem + 2.5vw, 3rem);
   --text-h2: clamp(1.75rem, 1.35rem + 2vw, 2.5rem);
   --text-h3: clamp(1.375rem, 1.1rem + 1.25vw, 2rem);
@@ -210,6 +208,7 @@
   }
   html {
     @apply font-sans overflow-x-hidden;
+    font-family: var(--font-rudaw), Tahoma, "Segoe UI", sans-serif;
   }
   html.theme-transition,
   html.theme-transition *,
@@ -293,15 +292,13 @@
 }
 
 @layer utilities {
-  .font-english {
-    font-family: var(--font-english), ui-sans-serif, system-ui, sans-serif;
-  }
-  .font-arabic {
-    font-family: var(--font-arabic), "Segoe UI", Tahoma, sans-serif;
-  }
+  .font-english,
+  .font-arabic,
   .font-kurdish,
-  .font-rudaw {
-    font-family: var(--font-kurdish);
+  .font-rudaw,
+  .font-display,
+  .font-mono {
+    font-family: var(--font-rudaw), Tahoma, "Segoe UI", sans-serif;
   }
   .scrollbar-hide {
     -ms-overflow-style: none;
@@ -475,15 +472,16 @@
     --showroom-glass: rgb(255 255 255 / 0.88);
     color: var(--showroom-primary);
     background: var(--showroom-secondary);
-    font-family: var(--font-english), ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-rudaw), Tahoma, "Segoe UI", sans-serif;
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
   }
 
-  html[dir="rtl"] [data-showroom] {
-    font-family: var(--font-kurdish);
+  html[dir="rtl"] [data-showroom],
+  html[dir="ltr"] [data-showroom] {
+    font-family: var(--font-rudaw), Tahoma, "Segoe UI", sans-serif;
     letter-spacing: 0;
   }
 
@@ -519,12 +517,12 @@
   }
 
   [data-showroom] .font-display {
-    font-family: var(--font-display), var(--font-english), serif;
-    letter-spacing: -0.02em;
+    font-family: var(--font-rudaw), Tahoma, "Segoe UI", sans-serif;
+    letter-spacing: 0;
   }
 
   html[dir="rtl"] [data-showroom] .font-display {
-    font-family: var(--font-kurdish);
+    font-family: var(--font-rudaw), Tahoma, "Segoe UI", sans-serif;
     letter-spacing: 0;
   }
 
