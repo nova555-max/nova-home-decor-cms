@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
+import { CreateAdministratorForm } from "@/components/admin/create-administrator-form";
 import { isDevAuthEnabled } from "@/lib/auth/dev-session";
 import { LoginForm } from "@/components/admin/login-form";
 import { LoginThemeToggle } from "@/components/admin/login-theme-toggle";
@@ -17,12 +18,8 @@ export default async function LoginPage() {
   const gate = await getAdministratorGate();
   const devLogin = isDevAuthEnabled();
 
-  // First install: no administrator yet → Create Administrator page.
-  if (gate === "needs_setup" && !devLogin) {
-    redirect("/admin/setup");
-  }
-
   const devEmail = devLogin ? process.env.DEV_ADMIN_EMAIL?.trim() : undefined;
+  const showCreateAdministrator = gate === "needs_setup" && !devLogin;
 
   return (
     <div className="relative flex min-h-svh items-center justify-center overflow-hidden bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
@@ -32,7 +29,11 @@ export default async function LoginPage() {
       <Suspense
         fallback={<Skeleton className="h-80 w-full max-w-md rounded-[20px]" />}
       >
-        <LoginForm devEmail={devEmail} devLoginEnabled={devLogin} />
+        {showCreateAdministrator ? (
+          <CreateAdministratorForm />
+        ) : (
+          <LoginForm devEmail={devEmail} devLoginEnabled={devLogin} />
+        )}
       </Suspense>
     </div>
   );
