@@ -51,6 +51,9 @@ export function CreateAdministratorForm() {
           {t("auth.setup_title")}
         </CardTitle>
         <CardDescription>{t("auth.setup_desc")}</CardDescription>
+        <p className="text-muted-foreground mx-auto max-w-sm text-xs leading-relaxed">
+          {t("auth.admin_locked_notice")}
+        </p>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">

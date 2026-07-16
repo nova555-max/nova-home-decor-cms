@@ -645,6 +645,8 @@ const ku = {
     confirm_password: "دووبارەکردنەوەی وشەی نهێنی",
     update_password: "نوێکردنەوەی وشەی نهێنی",
     check_email: "ئیمەیڵەکەت بپشکنە بۆ کۆدی پشتڕاستکردنەوە",
+    admin_locked_notice:
+      "ببورە، ڕێگە پێنەدراوە ئەدمینی تر زیاد بکەیت. لەبەر ئاسایشی سیستەمەکە، تکایە پەیوەندی بە خاوەن سیستەمەکە بکە.",
     password_mismatch: "وشەی نهێنی یەکسان نییە",
     password_updated: "وشەی نهێنی نوێکرایەوە",
     setup_title: "دروستکردنی بەڕێوەبەر",
@@ -1296,6 +1298,8 @@ const ar = {
     confirm_password: "تأكيد كلمة المرور",
     update_password: "تحديث كلمة المرور",
     check_email: "تحقق من بريدك للحصول على رمز التحقق",
+    admin_locked_notice:
+      "عذراً، غير مسموح بإضافة مسؤول آخر. حفاظاً على أمان النظام، يرجى التواصل مع مالك النظام.",
     password_mismatch: "كلمات المرور غير متطابقة",
     password_updated: "تم تحديث كلمة المرور",
     setup_title: "إنشاء المسؤول",
@@ -1947,6 +1951,8 @@ const en = {
     confirm_password: "Confirm password",
     update_password: "Update password",
     check_email: "Check your email for the verification code",
+    admin_locked_notice:
+      "Sorry, you are not allowed to add another administrator. For system security, please contact the system owner.",
     password_mismatch: "Passwords do not match",
     password_updated: "Password updated",
     setup_title: "Create Administrator",
