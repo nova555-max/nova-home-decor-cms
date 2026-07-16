@@ -8,11 +8,18 @@ import {
   validateDevCredentials,
 } from "@/lib/auth/dev-session";
 import {
-  sendPasswordResetEmail,
+  generateOtpCode,
+  hashOtpCode,
+  isValidOtpFormat,
+  otpHashesMatch,
+  OTP_RESEND_COOLDOWN_MS,
+  OTP_TTL_MS,
+} from "@/lib/auth/password-otp";
+import {
+  sendPasswordOtpEmail,
   isResendConfigured,
 } from "@/lib/email/send-password-reset";
 import {
-  ensureSuperAdminProfile,
   getAdminUserByAuthId,
   getAdminUserByEmail,
 } from "@/lib/queries/admin-users";
@@ -20,6 +27,74 @@ import { createServiceClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 type ActionResult = { success: true } | { success: false; error: string };
+
+type ServiceClient = ReturnType<typeof createServiceClient>;
+
+async function getServiceOrError(): Promise<
+  { ok: true; service: ServiceClient } | { ok: false; error: string }
+> {
+  try {
+    return { ok: true, service: createServiceClient() };
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Service role key missing.";
+    if (message.includes("SUPABASE_SERVICE_ROLE_KEY")) {
+      return {
+        ok: false,
+        error:
+          "Add SUPABASE_SERVICE_ROLE_KEY to .env.local to enable password reset.",
+      };
+    }
+    return { ok: false, error: message };
+  }
+}
+
+async function findAuthUserIdByEmail(
+  service: ServiceClient,
+  email: string,
+): Promise<string | null> {
+  const { data: profile } = await service
+    .from("admin_users")
+    .select("auth_user_id")
+    .ilike("email", email)
+    .maybeSingle();
+
+  if (profile?.auth_user_id) {
+    return profile.auth_user_id as string;
+  }
+
+  for (let page = 1; page <= 10; page += 1) {
+    const { data, error } = await service.auth.admin.listUsers({
+      page,
+      perPage: 200,
+    });
+    if (error) {
+      console.error("[findAuthUserIdByEmail]", error.message);
+      return null;
+    }
+    const users = data?.users ?? [];
+    const found = users.find(
+      (u) => u.email?.toLowerCase() === email.toLowerCase(),
+    );
+    if (found?.id) return found.id;
+    if (users.length < 200) break;
+  }
+
+  return null;
+}
+
+async function deleteOtpsForEmail(
+  service: ServiceClient,
+  email: string,
+): Promise<void> {
+  const { error } = await service
+    .from("password_reset_otps")
+    .delete()
+    .ilike("email", email);
+  if (error) {
+    console.error("[deleteOtpsForEmail]", error.message);
+  }
+}
 
 export async function signInAsAdmin(
   email: string,
@@ -59,25 +134,6 @@ export async function signInAsAdmin(
     if (profile?.auth_user_id && profile.auth_user_id !== authUser.id) {
       await supabase.auth.signOut();
       return { success: false, error: "Account is not linked correctly." };
-    }
-  }
-
-  if (
-    !profile &&
-    env.SUPER_ADMIN_EMAIL &&
-    authUser.email.toLowerCase() === env.SUPER_ADMIN_EMAIL.toLowerCase()
-  ) {
-    try {
-      profile = await ensureSuperAdminProfile(authUser.id, authUser.email);
-    } catch (err) {
-      await supabase.auth.signOut();
-      return {
-        success: false,
-        error:
-          err instanceof Error
-            ? err.message
-            : "Could not create admin profile.",
-      };
     }
   }
 
@@ -137,26 +193,16 @@ export async function forgotPassword(email: string): Promise<ActionResult> {
     };
   }
 
-  let service: ReturnType<typeof createServiceClient>;
-  try {
-    service = createServiceClient();
-  } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Service role key missing.";
-    if (message.includes("SUPABASE_SERVICE_ROLE_KEY")) {
-      return {
-        success: false,
-        error:
-          "Add SUPABASE_SERVICE_ROLE_KEY to .env.local to enable password reset emails.",
-      };
-    }
-    return { success: false, error: message };
+  const serviceResult = await getServiceOrError();
+  if (!serviceResult.ok) {
+    return { success: false, error: serviceResult.error };
   }
+  const { service } = serviceResult;
 
   // Must use service role: anon/session client cannot read admin_users while logged out (RLS).
   const { data: profile, error: profileError } = await service
     .from("admin_users")
-    .select("id, email, is_active")
+    .select("id, email, is_active, auth_user_id")
     .ilike("email", normalized)
     .maybeSingle();
 
@@ -169,95 +215,151 @@ export async function forgotPassword(email: string): Promise<ActionResult> {
     !!env.SUPER_ADMIN_EMAIL &&
     normalized === env.SUPER_ADMIN_EMAIL.toLowerCase();
 
-  // Unknown / inactive emails: succeed silently (do not reveal account existence).
   if (!isSuperAdminEmail && !profile?.is_active) {
-    return { success: true };
+    return { success: false, error: "Email not found." };
   }
 
-  const appUrl = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
-  const redirectTo = `${appUrl}/auth/callback?next=/admin/reset-password`;
-
-  try {
-    const { data, error } = await service.auth.admin.generateLink({
-      type: "recovery",
-      email: normalized,
-      options: { redirectTo },
-    });
-
-    if (error) {
-      console.error("[forgotPassword] generateLink", error.message);
-      // User may not exist in Supabase Auth yet (e.g. only DEV_AUTH credentials).
-      return {
-        success: false,
-        error:
-          error.message.includes("User not found") ||
-          error.status === 404
-            ? "No auth account found for this email. Sign in once with Supabase Auth, or create the user in Supabase → Authentication."
-            : error.message,
-      };
-    }
-
-    const hashedToken = data?.properties?.hashed_token;
-    const actionLink = data?.properties?.action_link;
-
-    // Prefer app-hosted verify (sets SSR cookies via verifyOtp). Fall back to Supabase action_link.
-    const resetLink = hashedToken
-      ? `${appUrl}/auth/callback?token_hash=${encodeURIComponent(hashedToken)}&type=recovery&next=${encodeURIComponent("/admin/reset-password")}`
-      : actionLink;
-
-    if (!resetLink) {
-      return {
-        success: false,
-        error: "Could not generate password reset link.",
-      };
-    }
-
-    const sent = await sendPasswordResetEmail({
-      to: normalized,
-      resetLink,
-    });
-
-    if (!sent.ok) {
-      console.error("[forgotPassword] resend", sent.error);
-      return { success: false, error: sent.error };
-    }
-
-    return { success: true };
-  } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Could not send reset email.";
-    console.error("[forgotPassword]", message);
-    if (message.includes("SUPABASE_SERVICE_ROLE_KEY")) {
-      return {
-        success: false,
-        error:
-          "Add SUPABASE_SERVICE_ROLE_KEY to .env.local to enable password reset emails.",
-      };
-    }
-    return { success: false, error: message };
+  const authUserId = await findAuthUserIdByEmail(service, normalized);
+  if (!authUserId) {
+    return { success: false, error: "Email not found." };
   }
-}
 
-export async function resetPassword(password: string): Promise<ActionResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: recent } = await service
+    .from("password_reset_otps")
+    .select("last_sent_at")
+    .ilike("email", normalized)
+    .order("last_sent_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-  if (!user) {
+  if (recent?.last_sent_at) {
+    const elapsed =
+      Date.now() - new Date(recent.last_sent_at as string).getTime();
+    if (elapsed < OTP_RESEND_COOLDOWN_MS) {
+      const waitSec = Math.ceil((OTP_RESEND_COOLDOWN_MS - elapsed) / 1000);
+      return {
+        success: false,
+        error: `Please wait ${waitSec} seconds before requesting another code.`,
+      };
+    }
+  }
+
+  const otp = generateOtpCode();
+  const codeHash = hashOtpCode(otp, normalized);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + OTP_TTL_MS);
+
+  await deleteOtpsForEmail(service, normalized);
+
+  const { error: insertError } = await service.from("password_reset_otps").insert({
+    email: normalized,
+    code_hash: codeHash,
+    expires_at: expiresAt.toISOString(),
+    last_sent_at: now.toISOString(),
+  });
+
+  if (insertError) {
+    console.error("[forgotPassword] insert otp", insertError.message);
+    return { success: false, error: "Could not create verification code." };
+  }
+
+  const sent = await sendPasswordOtpEmail({ to: normalized, otp });
+  if (!sent.ok) {
+    console.error("[forgotPassword] resend", sent.error);
+    await deleteOtpsForEmail(service, normalized);
     return {
       success: false,
-      error: "Session expired. Request a new reset link.",
+      error: "Could not send verification code. Please try again.",
     };
   }
 
-  const { error } = await supabase.auth.updateUser({ password });
+  return { success: true };
+}
 
-  if (error) {
-    return { success: false, error: error.message };
+export async function resetPasswordWithOtp(
+  email: string,
+  otp: string,
+  password: string,
+): Promise<ActionResult> {
+  const normalized = email.trim().toLowerCase();
+  const code = otp.trim();
+
+  if (!normalized) {
+    return { success: false, error: "Email is required." };
   }
 
+  if (!isValidOtpFormat(code)) {
+    return { success: false, error: "Invalid code." };
+  }
+
+  if (!password || password.length < 8) {
+    return {
+      success: false,
+      error: "Password must be at least 8 characters.",
+    };
+  }
+
+  const serviceResult = await getServiceOrError();
+  if (!serviceResult.ok) {
+    return { success: false, error: serviceResult.error };
+  }
+  const { service } = serviceResult;
+
+  const { data: row, error: lookupError } = await service
+    .from("password_reset_otps")
+    .select("id, code_hash, expires_at")
+    .ilike("email", normalized)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (lookupError) {
+    console.error("[resetPasswordWithOtp] lookup", lookupError.message);
+    return { success: false, error: "Could not verify code." };
+  }
+
+  if (!row) {
+    return { success: false, error: "Invalid code." };
+  }
+
+  const expiresAt = new Date(row.expires_at as string).getTime();
+  if (Number.isNaN(expiresAt) || Date.now() > expiresAt) {
+    await deleteOtpsForEmail(service, normalized);
+    return { success: false, error: "Expired code." };
+  }
+
+  const expectedHash = row.code_hash as string;
+  const providedHash = hashOtpCode(code, normalized);
+  if (!otpHashesMatch(expectedHash, providedHash)) {
+    return { success: false, error: "Invalid code." };
+  }
+
+  const authUserId = await findAuthUserIdByEmail(service, normalized);
+  if (!authUserId) {
+    await deleteOtpsForEmail(service, normalized);
+    return { success: false, error: "Email not found." };
+  }
+
+  const { error: updateError } = await service.auth.admin.updateUserById(
+    authUserId,
+    { password },
+  );
+
+  if (updateError) {
+    console.error("[resetPasswordWithOtp] updateUser", updateError.message);
+    return { success: false, error: "Could not update password." };
+  }
+
+  await deleteOtpsForEmail(service, normalized);
   return { success: true };
+}
+
+/** @deprecated Prefer resetPasswordWithOtp — session-based reset links are disabled. */
+export async function resetPassword(_password: string): Promise<ActionResult> {
+  return {
+    success: false,
+    error: "Use the verification code sent to your email to reset your password.",
+  };
 }
 
 export async function signOut(): Promise<void> {

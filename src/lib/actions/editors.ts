@@ -35,7 +35,10 @@ export async function createEditor(formData: FormData): Promise<ActionResult> {
   }
 
   if (env.SUPER_ADMIN_EMAIL && email === env.SUPER_ADMIN_EMAIL.toLowerCase()) {
-    return { success: false, error: "Super admin account already exists." };
+    return {
+      success: false,
+      error: "This email is reserved for the administrator account.",
+    };
   }
 
   const existing = await getAdminUserByEmail(email);
@@ -68,6 +71,7 @@ export async function createEditor(formData: FormData): Promise<ActionResult> {
       };
     }
 
+    // Employees are always editors — never super_admin.
     const { error: profileError } = await service.from("admin_users").insert({
       auth_user_id: authData.user.id,
       email,
@@ -121,10 +125,12 @@ export async function updateEditor(formData: FormData): Promise<ActionResult> {
       return { success: false, error: "Editor not found." };
     }
 
+    // Never promote employees to administrator.
     const { error: updateError } = await service
       .from("admin_users")
-      .update({ permissions, is_active: isActive })
-      .eq("id", id);
+      .update({ permissions, is_active: isActive, role: "editor" })
+      .eq("id", id)
+      .eq("role", "editor");
 
     if (updateError) {
       return { success: false, error: updateError.message };

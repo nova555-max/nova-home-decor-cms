@@ -1,8 +1,8 @@
 import { safeFetch } from "@/lib/fetch/safe-fetch";
 
-type SendPasswordResetEmailInput = {
+type SendOtpEmailInput = {
   to: string;
-  resetLink: string;
+  otp: string;
 };
 
 type SendResult = { ok: true } | { ok: false; error: string };
@@ -20,8 +20,8 @@ function getResendConfig() {
   return { apiKey, from };
 }
 
-export async function sendPasswordResetEmail(
-  input: SendPasswordResetEmailInput,
+export async function sendPasswordOtpEmail(
+  input: SendOtpEmailInput,
 ): Promise<SendResult> {
   const config = getResendConfig();
   if (!config) {
@@ -37,19 +37,22 @@ export async function sendPasswordResetEmail(
     body: JSON.stringify({
       from: config.from,
       to: [input.to],
-      subject: "Nova Home Decor — Reset admin password",
+      subject: "Your Nova Home Decor verification code",
       html: `
         <div style="font-family:Arial,sans-serif;line-height:1.6;color:#2F2F2F">
-          <h2 style="margin:0 0 12px">Reset your password</h2>
-          <p>You requested a password reset for the Nova Home Decor admin panel.</p>
-          <p>
-            <a href="${input.resetLink}" style="display:inline-block;padding:12px 20px;background:#C9A96E;color:#F5F5F2;text-decoration:none;border-radius:20px">
-              Reset password
-            </a>
-          </p>
-          <p style="color:#666666;font-size:14px">If you did not request this, you can ignore this email.</p>
+          <p>Your verification code is:</p>
+          <p style="font-size:28px;font-weight:700;letter-spacing:0.2em;margin:16px 0">${input.otp}</p>
+          <p>This code expires in 10 minutes.</p>
+          <p style="color:#666666;font-size:14px">If you did not request a password reset, please ignore this email.</p>
         </div>
       `,
+      text: [
+        "Your verification code is:",
+        input.otp,
+        "",
+        "This code expires in 10 minutes.",
+        "If you did not request a password reset, please ignore this email.",
+      ].join("\n"),
     }),
     timeoutMs: 10000,
   });
@@ -65,13 +68,11 @@ export async function sendPasswordResetEmail(
     try {
       const body = (await response.json()) as {
         message?: string;
-        name?: string;
         error?: string;
       };
       if (body.message) message = body.message;
       else if (body.error) message = body.error;
 
-      // Common local/dev trap: onboarding@resend.dev can only send to the Resend account owner.
       if (
         /only send (testing|to your own)|verify a domain|not authorized/i.test(
           message,

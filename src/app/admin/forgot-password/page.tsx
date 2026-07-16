@@ -1,6 +1,15 @@
-import { ForgotPasswordForm } from "@/components/admin/forgot-password-form";
+import { redirect } from "next/navigation";
 
-export default function ForgotPasswordPage() {
+import { ForgotPasswordForm } from "@/components/admin/forgot-password-form";
+import { isDevAuthEnabled } from "@/lib/auth/dev-session";
+import { getAdministratorGate } from "@/lib/queries/admin-users";
+
+export default async function ForgotPasswordPage() {
+  const gate = await getAdministratorGate();
+  if (gate === "needs_setup" && !isDevAuthEnabled()) {
+    redirect("/admin/setup");
+  }
+
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-4">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(107,122,61,0.08),transparent_60%)]" />

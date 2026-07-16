@@ -1,13 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { resetPasswordWithOtp } from "@/lib/actions/auth";
+import { createFirstAdministrator } from "@/lib/actions/setup";
 import { useAdminT } from "@/hooks";
-import { ButtonLink } from "@/components/ui/button-link";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -19,11 +17,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function ResetPasswordForm() {
-  const router = useRouter();
+export function CreateAdministratorForm() {
   const t = useAdminT();
   const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -35,23 +31,26 @@ export function ResetPasswordForm() {
       return;
     }
     startTransition(async () => {
-      const result = await resetPasswordWithOtp(email, otp, password);
+      const result = await createFirstAdministrator(email, password, confirm);
       if (result.success) {
-        toast.success(t("auth.password_updated"));
-        router.push("/login");
-      } else {
-        toast.error(result.error);
+        toast.success(t("auth.setup_success"));
+        window.location.assign("/admin");
+        return;
       }
+      toast.error(result.error);
     });
   };
 
   return (
     <Card className="relative z-10 w-full max-w-md rounded-[20px] border-border shadow-soft-lg">
       <CardHeader className="space-y-3 text-center">
-        <CardTitle className="font-display text-xl tracking-tight">
-          {t("auth.reset")}
+        <div className="mx-auto flex size-14 items-center justify-center rounded-[16px] bg-primary text-lg font-semibold text-primary-foreground">
+          N
+        </div>
+        <CardTitle className="font-display text-2xl tracking-tight">
+          {t("auth.setup_title")}
         </CardTitle>
-        <CardDescription>{t("auth.otp_desc")}</CardDescription>
+        <CardDescription>{t("auth.setup_desc")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -67,24 +66,7 @@ export function ResetPasswordForm() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="otp">{t("auth.otp_code")}</Label>
-            <Input
-              id="otp"
-              type="text"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              pattern="\d{6}"
-              maxLength={6}
-              value={otp}
-              onChange={(e) =>
-                setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
-              }
-              required
-              placeholder="000000"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">{t("auth.new_password")}</Label>
+            <Label htmlFor="password">{t("auth.password")}</Label>
             <Input
               id="password"
               type="password"
@@ -110,25 +92,16 @@ export function ResetPasswordForm() {
           <Button
             type="submit"
             variant="gold"
-            className="w-full rounded-[20px] py-5"
+            className="min-h-12 w-full rounded-[20px] text-base"
             disabled={isPending}
           >
             {isPending ? (
               <Loader2 className="size-4 animate-spin" />
             ) : (
-              t("auth.update_password")
+              t("auth.setup_submit")
             )}
           </Button>
         </form>
-        <div className="mt-4 text-center">
-          <ButtonLink
-            href="/admin/forgot-password"
-            variant="link"
-            className="text-sm text-[var(--gold)]"
-          >
-            {t("auth.send_reset")}
-          </ButtonLink>
-        </div>
       </CardContent>
     </Card>
   );

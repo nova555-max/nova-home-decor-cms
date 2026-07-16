@@ -6,6 +6,7 @@ import { LoginForm } from "@/components/admin/login-form";
 import { LoginThemeToggle } from "@/components/admin/login-theme-toggle";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getAdminContext } from "@/lib/supabase/auth";
+import { getAdministratorGate } from "@/lib/queries/admin-users";
 
 export default async function LoginPage() {
   const ctx = await getAdminContext();
@@ -13,7 +14,14 @@ export default async function LoginPage() {
     redirect("/admin");
   }
 
+  const gate = await getAdministratorGate();
   const devLogin = isDevAuthEnabled();
+
+  // First install: no administrator yet → Create Administrator page.
+  if (gate === "needs_setup" && !devLogin) {
+    redirect("/admin/setup");
+  }
+
   const devEmail = devLogin ? process.env.DEV_ADMIN_EMAIL?.trim() : undefined;
 
   return (

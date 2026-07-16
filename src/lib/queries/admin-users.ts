@@ -3,7 +3,6 @@ import { hasDevSession } from "@/lib/auth/dev-session";
 import {
   ALL_ADMIN_PERMISSIONS,
   normalizePermissions,
-  permissionsForRole,
 } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
@@ -81,39 +80,68 @@ export async function listEditorUsers(): Promise<AdminUser[]> {
   })) as AdminUser[];
 }
 
-export async function ensureSuperAdminProfile(
-  authUserId: string,
-  email: string,
-): Promise<AdminUser> {
-  const existing = await getAdminUserByAuthId(authUserId);
-  if (existing) return existing;
-
-  const superEmail = env.SUPER_ADMIN_EMAIL?.toLowerCase();
-  if (!superEmail || email.toLowerCase() !== superEmail) {
-    throw new Error("Not authorized as super admin.");
-  }
-
+/** Count of lifetime administrator (super_admin) rows — active or not. */
+export async function countAdministrators(): Promise<number> {
   const service = createServiceClient();
-  const { data, error } = await service
+  const { count, error } = await service
     .from("admin_users")
-    .insert({
-      auth_user_id: authUserId,
-      email: email.toLowerCase(),
-      role: "super_admin",
-      permissions: permissionsForRole("super_admin"),
-      is_active: true,
-    })
-    .select("*")
-    .single();
+    .select("id", { count: "exact", head: true })
+    .eq("role", "super_admin");
 
   if (error) {
     throw new Error(error.message);
   }
 
-  return {
-    ...data,
-    permissions: normalizePermissions(data.permissions),
-  } as AdminUser;
+  return count ?? 0;
+}
+
+export async function hasAdministrator(): Promise<boolean> {
+  return (await countAdministrators()) >= 1;
+}
+
+/** Safe status for routing when service role may be unavailable. */
+export async function getAdministratorGate(): Promise<
+  "ready" | "needs_setup" | "unknown"
+> {
+  try {
+    return (await countAdministrators()) >= 1 ? "ready" : "needs_setup";
+  } catch (err) {
+    console.error(
+      "[getAdministratorGate]",
+      err instanceof Error ? err.message : err,
+    );
+    return "unknown";
+  }
+}
+
+/**
+ * @deprecated Auto-bootstrap is disabled. Use createFirstAdministrator on first install only.
+ * Kept to reject any leftover callers once an admin already exists.
+ */
+export async function ensureSuperAdminProfile(
+  authUserId: string,
+  email: string,
+): Promise<AdminUser> {
+  void email;
+  const existing = await getAdminUserByAuthId(authUserId);
+  if (existing) return existing;
+
+  let adminExists = false;
+  try {
+    adminExists = await hasAdministrator();
+  } catch {
+    adminExists = true;
+  }
+
+  if (adminExists) {
+    throw new Error(
+      "Administrator already exists. Creating another admin is permanently disabled.",
+    );
+  }
+
+  throw new Error(
+    "Administrator must be created via the Create Administrator setup page.",
+  );
 }
 
 export async function getAdminContext(): Promise<AdminContext | null> {
@@ -128,17 +156,7 @@ export async function getAdminContext(): Promise<AdminContext | null> {
 
   if (!user?.email) return null;
 
-  let profile = await getAdminUserByAuthId(user.id);
-
-  if (!profile && env.SUPER_ADMIN_EMAIL) {
-    if (user.email.toLowerCase() === env.SUPER_ADMIN_EMAIL.toLowerCase()) {
-      try {
-        profile = await ensureSuperAdminProfile(user.id, user.email);
-      } catch {
-        return null;
-      }
-    }
-  }
+  const profile = await getAdminUserByAuthId(user.id);
 
   if (!profile || !profile.is_active) return null;
 

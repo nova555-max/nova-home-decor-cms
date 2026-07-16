@@ -1,6 +1,8 @@
 /**
- * Create super admin in Supabase Auth + admin_users profile.
+ * Create the single lifetime super admin in Supabase Auth + admin_users.
  * Requires SUPABASE_SERVICE_ROLE_KEY in .env.local
+ *
+ * Permanently refuses if any super_admin already exists.
  *
  * Usage: node scripts/create-super-admin.mjs
  */
@@ -39,15 +41,21 @@ const supabase = createClient(url, serviceKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-const { data: existing } = await supabase
+const { count, error: countError } = await supabase
   .from("admin_users")
-  .select("id")
-  .eq("email", email.toLowerCase())
-  .maybeSingle();
+  .select("id", { count: "exact", head: true })
+  .eq("role", "super_admin");
 
-if (existing) {
-  console.log("Super admin profile already exists for", email);
-  process.exit(0);
+if (countError) {
+  console.error("Could not check administrators:", countError.message);
+  process.exit(1);
+}
+
+if ((count ?? 0) >= 1) {
+  console.error(
+    "Administrator already exists. Creating another admin is permanently disabled.",
+  );
+  process.exit(1);
 }
 
 const { data: authData, error: authError } = await supabase.auth.admin.createUser({
