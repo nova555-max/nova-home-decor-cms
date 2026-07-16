@@ -57,7 +57,7 @@ try {
   console.log("Could not clear .next cache (still starting dev server)");
 }
 
-const child = spawn("npm", ["run", "dev"], {
+const child = spawn("npm", ["run", "dev:webpack"], {
   cwd: root,
   stdio: "inherit",
   shell: true,

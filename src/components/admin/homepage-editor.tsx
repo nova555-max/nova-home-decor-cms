@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { LayoutList, Loader2, Plus, Trash2 } from "lucide-react";
@@ -14,13 +13,15 @@ import {
   saveTestimonial,
   updateHomepageContent,
 } from "@/lib/actions/homepage";
-import type { HomepageContent, Testimonial } from "@/types/database";
+import type { HeroSection, HomepageContent, Testimonial } from "@/types/database";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { ImageUpload } from "@/components/admin/image-upload";
 import { LocaleTabs, LocalizedInput } from "@/components/admin/locale-fields";
+import { MultiImageUpload } from "@/components/admin/multi-image-upload";
 import { useAdminT, useDirection } from "@/hooks";
 import { useSubmitLock } from "@/hooks/use-submit-lock";
 import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button-link";
 import {
   Card,
   CardContent,
@@ -49,29 +50,45 @@ type TestimonialDraft = {
   is_active: boolean;
 };
 
-const defaultHero = () => ({
-  ku: {
-    title: "",
-    subtitle: "",
-    cta_primary: "",
-    cta_secondary: "",
-    image_url: "",
-  },
-  ar: {
-    title: "",
-    subtitle: "",
-    cta_primary: "",
-    cta_secondary: "",
-    image_url: "",
-  },
-  en: {
-    title: "",
-    subtitle: "",
-    cta_primary: "",
-    cta_secondary: "",
-    image_url: "",
-  },
+function normalizeHeroLocale(
+  item?: Partial<HeroSection> | null,
+): HeroSection {
+  const fromList = (item?.images ?? []).filter(Boolean).slice(0, 8);
+  const images =
+    fromList.length > 0
+      ? fromList
+      : item?.image_url
+        ? [item.image_url]
+        : [];
+
+  return {
+    title: item?.title ?? "",
+    subtitle: item?.subtitle ?? "",
+    description: item?.description,
+    cta_primary: item?.cta_primary ?? "",
+    cta_secondary: item?.cta_secondary ?? "",
+    cta_contact: item?.cta_contact,
+    images,
+    image_url: images[0] ?? "",
+  };
+}
+
+const defaultHero = (): Record<Locale, HeroSection> => ({
+  ku: normalizeHeroLocale(),
+  ar: normalizeHeroLocale(),
+  en: normalizeHeroLocale(),
 });
+
+function normalizeHeroRecord(
+  hero?: HomepageContent["hero"] | null,
+): Record<Locale, HeroSection> {
+  if (!hero) return defaultHero();
+  return {
+    ku: normalizeHeroLocale(hero.ku),
+    ar: normalizeHeroLocale(hero.ar),
+    en: normalizeHeroLocale(hero.en),
+  };
+}
 
 const defaultAbout = () => ({
   ku: { title: "", content: "", image_url: "" },
@@ -119,7 +136,7 @@ export function HomepageEditor({
   const [testimonialDrafts, setTestimonialDrafts] = useState<TestimonialDraft[]>(
     () => testimonials.map(toDraft),
   );
-  const [hero, setHero] = useState(homepage?.hero ?? defaultHero());
+  const [hero, setHero] = useState(() => normalizeHeroRecord(homepage?.hero));
   const [about, setAbout] = useState(homepage?.about ?? defaultAbout());
   const [why, setWhy] = useState(
     homepage?.why_choose_us ?? {
@@ -133,7 +150,7 @@ export function HomepageEditor({
     startTransition(async () => {
       await runLocked(async () => {
         const result = await updateHomepageContent({
-          hero,
+          hero: normalizeHeroRecord(hero),
           about,
           why_choose_us: why,
           section_visibility:
@@ -166,13 +183,13 @@ export function HomepageEditor({
           <CardDescription>{t("section_visibility.homepage_link_desc")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button
+          <ButtonLink
+            href="/admin/section-visibility"
             className="rounded-xl"
-            render={<Link href="/admin/section-visibility" />}
           >
             <LayoutList className="size-4" />
             {t("section_visibility.open_manager")}
-          </Button>
+          </ButtonLink>
         </CardContent>
       </Card>
 
@@ -209,15 +226,20 @@ export function HomepageEditor({
               }
             />
           </div>
-          <ImageUpload
-            value={hero[tab]?.image_url}
-            onChange={(url) =>
+          <MultiImageUpload
+            value={hero[tab]?.images ?? []}
+            max={8}
+            folder="homepage"
+            onChange={(urls) =>
               setHero((prev) => ({
                 ...prev,
-                [tab]: { ...prev[tab], image_url: url ?? "" },
+                [tab]: {
+                  ...prev[tab],
+                  images: urls,
+                  image_url: urls[0] ?? "",
+                },
               }))
             }
-            folder="homepage"
           />
         </CardContent>
       </Card>

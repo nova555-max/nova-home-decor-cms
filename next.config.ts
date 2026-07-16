@@ -61,6 +61,13 @@ const nextConfig: NextConfig = {
 
 export default nextConfig;
 
-import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
+// Wrangler/miniflare init slows or blocks local CMS dev; enable only for Cloudflare preview.
+const cloudflareDevEnabled =
+  process.env.CLOUDFLARE_DEV === "1" ||
+  process.env.npm_lifecycle_event?.includes("cloudflare") === true;
 
-initOpenNextCloudflareForDev();
+if (cloudflareDevEnabled) {
+  void import("@opennextjs/cloudflare").then((mod) =>
+    mod.initOpenNextCloudflareForDev(),
+  );
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { useScroll, useTransform } from "framer-motion";
 import { motion } from "@/lib/motion";
@@ -12,6 +12,7 @@ import { t } from "@/lib/i18n";
 import { showroomText } from "@/lib/showroom/content";
 import type {
   Category,
+  HeroSection as HeroContent,
   HomepageContent,
   Product,
   WebsiteSettings,
@@ -32,6 +33,18 @@ function isVideoUrl(url: string) {
   return /\.(mp4|webm|mov)(\?|$)/i.test(url);
 }
 
+function resolveHeroMediaUrls(
+  hero: HeroContent | undefined,
+  settings: WebsiteSettings | null,
+): string[] {
+  const fromList = (hero?.images ?? []).filter(Boolean).slice(0, 8);
+  if (fromList.length > 0) return fromList;
+  if (hero?.image_url) return [hero.image_url];
+  if (settings?.og_image) return [settings.og_image];
+  if (settings?.company_logo) return [settings.company_logo];
+  return [];
+}
+
 export function HeroSection({
   settings,
   homepage,
@@ -48,9 +61,25 @@ export function HeroSection({
 
   const hero = homepage?.hero?.[locale] ?? homepage?.hero?.ku;
   const companyName = settings?.company_name ?? "Nova Home Decor";
-  const mediaUrl =
-    hero?.image_url ?? settings?.og_image ?? settings?.company_logo ?? null;
+  const mediaUrls = useMemo(
+    () => resolveHeroMediaUrls(hero, settings),
+    [hero, settings],
+  );
+  const [activeIndex, setActiveIndex] = useState(0);
+  const mediaUrl = mediaUrls[activeIndex] ?? null;
   const isVideo = mediaUrl ? isVideoUrl(mediaUrl) : false;
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [mediaUrls]);
+
+  useEffect(() => {
+    if (mediaUrls.length <= 1 || isVideo) return;
+    const id = window.setInterval(() => {
+      setActiveIndex((prev) => (prev + 1) % mediaUrls.length);
+    }, 6000);
+    return () => window.clearInterval(id);
+  }, [mediaUrls, isVideo]);
 
   const title = hero?.title || companyName;
   const subtitle = hero?.subtitle || t(locale, "hero", "subtitle");
@@ -72,7 +101,9 @@ export function HeroSection({
       aria-label={companyName}
     >
       <motion.div style={{ y: backgroundY }} className="absolute inset-0 -top-[10%] h-[120%]">
-        {mediaUrl && isVideo ? (
+        {mediaUrls.length === 0 ? (
+          <div className="hero-fallback-gradient absolute inset-0" />
+        ) : isVideo && mediaUrl ? (
           <video
             autoPlay
             muted
@@ -83,17 +114,21 @@ export function HeroSection({
           >
             <source src={mediaUrl} />
           </video>
-        ) : mediaUrl ? (
-          <Image
-            src={mediaUrl}
-            alt={title}
-            fill
-            priority
-            className="object-cover"
-            sizes="100vw"
-          />
         ) : (
-          <div className="hero-fallback-gradient absolute inset-0" />
+          mediaUrls.map((url, index) => (
+            <Image
+              key={url}
+              src={url}
+              alt={title}
+              fill
+              priority={index === 0}
+              className={cn(
+                "object-cover transition-opacity duration-1000",
+                index === activeIndex ? "opacity-100" : "opacity-0",
+              )}
+              sizes="100vw"
+            />
+          ))
         )}
       </motion.div>
 
@@ -201,6 +236,25 @@ export function HeroSection({
           </motion.div>
         ) : null}
       </div>
+
+      {mediaUrls.length > 1 && !isVideo ? (
+        <div className="absolute bottom-20 start-1/2 z-10 flex -translate-x-1/2 gap-2">
+          {mediaUrls.map((url, index) => (
+            <button
+              key={url}
+              type="button"
+              aria-label={`${index + 1}`}
+              onClick={() => setActiveIndex(index)}
+              className={cn(
+                "size-2 rounded-full transition-all",
+                index === activeIndex
+                  ? "bg-[var(--hero-overlay-fg)] scale-110"
+                  : "bg-[var(--hero-overlay-fg)]/40 hover:bg-[var(--hero-overlay-fg)]/70",
+              )}
+            />
+          ))}
+        </div>
+      ) : null}
 
       <motion.a
         href="#stats"

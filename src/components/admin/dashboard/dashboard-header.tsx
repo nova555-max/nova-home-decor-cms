@@ -1,23 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Bell, Bot, Sparkles } from "lucide-react";
+import { Bot } from "lucide-react";
 
-import { GlobalSearch } from "@/components/admin/global-search";
-import { UserMenu } from "@/components/admin/user-menu";
-import { LocaleSwitcher } from "@/components/public/locale-switcher";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { td } from "@/lib/i18n/dashboard-dictionaries";
-import { getMenuAlign } from "@/lib/rtl";
 import { motion } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { useDirection, useMounted } from "@/hooks";
@@ -26,16 +13,15 @@ import type { SearchItem } from "@/types/dashboard";
 
 type DashboardHeaderProps = {
   adminContext: AdminContext;
-  searchItems: SearchItem[];
+  /** Kept for caller compatibility — search lives in AdminHeader only. */
+  searchItems?: SearchItem[];
 };
 
 export function DashboardHeader({
   adminContext,
-  searchItems,
 }: DashboardHeaderProps) {
-  const { locale, isRtl, direction } = useDirection();
+  const { locale, isRtl } = useDirection();
   const mounted = useMounted();
-  const menuAlign = getMenuAlign(direction);
   const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => {
@@ -104,7 +90,7 @@ export function DashboardHeader({
         <div className="pointer-events-none absolute -bottom-20 -start-10 size-48 rounded-full bg-primary/10 blur-3xl" />
 
         <div className="relative space-y-6 p-5 sm:p-6 lg:p-7">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 space-y-3">
               <p className="text-[11px] font-semibold tracking-[0.22em] text-primary uppercase">
                 {td(locale, "brand_label")}
@@ -136,87 +122,21 @@ export function DashboardHeader({
               </div>
             </div>
 
-            <DashboardToolbar
-              adminContext={adminContext}
-              searchItems={searchItems}
-              menuAlign={menuAlign}
-              onOpenAi={openAiAssistant}
-            />
-          </div>
-
-          <div className="lg:hidden">
-            <GlobalSearch items={searchItems} className="w-full max-w-none" />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={openAiAssistant}
+              className="h-11 shrink-0 gap-2 rounded-xl border-border bg-card/90 px-4 text-primary shadow-sm hover:border-primary/40"
+              aria-label={td(locale, "ai_assistant")}
+            >
+              <Bot className="size-4" />
+              <span className="text-sm font-medium">
+                {td(locale, "ai_assistant")}
+              </span>
+            </Button>
           </div>
         </div>
       </div>
     </motion.section>
-  );
-}
-
-function DashboardToolbar({
-  adminContext,
-  searchItems,
-  menuAlign,
-  onOpenAi,
-}: {
-  adminContext: AdminContext;
-  searchItems: SearchItem[];
-  menuAlign: "start" | "end" | "center";
-  onOpenAi: () => void;
-}) {
-  const { locale } = useDirection();
-
-  return (
-    <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:justify-end">
-      <GlobalSearch
-        items={searchItems}
-        className="hidden min-w-[14rem] flex-1 lg:flex lg:max-w-xs"
-      />
-
-      <Button
-        type="button"
-        variant="outline"
-        size="icon"
-        onClick={onOpenAi}
-        className="size-10 rounded-xl border-border bg-card/90 text-primary shadow-sm hover:border-primary/40 hover:bg-white"
-        aria-label={td(locale, "ai_assistant")}
-      >
-        <Bot className="size-4" />
-      </Button>
-
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          render={
-            <Button
-              variant="outline"
-              size="icon"
-              className="size-10 rounded-xl border-border bg-card/90 shadow-sm hover:border-primary/40 hover:bg-white"
-              aria-label={td(locale, "notifications")}
-            />
-          }
-        >
-          <Bell className="size-4 text-primary" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align={menuAlign} className="w-72 rounded-xl">
-          <DropdownMenuGroup>
-            <DropdownMenuLabel className="flex items-center gap-2">
-              <Sparkles className="size-3.5 text-gold" />
-              {td(locale, "notifications")}
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <p className="px-3 py-8 text-center text-sm text-muted-foreground">
-              {td(locale, "no_notifications")}
-            </p>
-          </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      <LocaleSwitcher className="hidden rounded-xl border border-border bg-card/90 shadow-sm md:flex" />
-      <ThemeToggle
-        className="hidden rounded-xl border border-border bg-card/90 shadow-sm md:flex"
-        size="sm"
-      />
-      <UserMenu adminContext={adminContext} />
-    </div>
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import Link from "next/link";
 import {
   DndContext,
   closestCenter,
@@ -49,6 +48,7 @@ import type { HomepageSectionSetting, SectionManagerState } from "@/types/homepa
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button-link";
 import {
   Card,
   CardContent,
@@ -303,9 +303,9 @@ export function SectionVisibilityManager({
         titleKey="pages.section_visibility.title"
         subtitleKey="pages.section_visibility.subtitle"
         action={
-          <Button className="rounded-xl" disabled={isBusy} render={<Link href="/" />}>
+          <ButtonLink href="/" className="rounded-xl">
             {t("section_visibility.view_live")}
-          </Button>
+          </ButtonLink>
         }
       />
 
@@ -383,10 +383,10 @@ export function SectionVisibilityManager({
                 ) : null}
               </div>
               <p className="text-muted-foreground">{t("section_visibility.preview_hint")}</p>
-              <Button className="rounded-xl" render={<Link href="/" target="_blank" />}>
+              <ButtonLink href="/" target="_blank" className="rounded-xl">
                 <Eye className="size-4" />
                 {t("section_visibility.open_public")}
-              </Button>
+              </ButtonLink>
             </div>
           ) : null}
         </DialogContent>
@@ -576,14 +576,14 @@ function SectionRowContent({
                 {t("common.edit")}
               </Button>
             ) : (
-              <Button
-                size="sm"
+              <ButtonLink
+                href={registry.editHref}
                 variant="ghost"
+                size="sm"
                 className="rounded-xl"
-                render={<Link href={registry.editHref} />}
               >
                 {t("common.edit")}
-              </Button>
+              </ButtonLink>
             )
           ) : null}
         </div>

@@ -63,8 +63,22 @@ export async function sendPasswordResetEmail(
   if (!response.ok) {
     let message = `Resend error (${response.status})`;
     try {
-      const body = (await response.json()) as { message?: string };
+      const body = (await response.json()) as {
+        message?: string;
+        name?: string;
+        error?: string;
+      };
       if (body.message) message = body.message;
+      else if (body.error) message = body.error;
+
+      // Common local/dev trap: onboarding@resend.dev can only send to the Resend account owner.
+      if (
+        /only send (testing|to your own)|verify a domain|not authorized/i.test(
+          message,
+        )
+      ) {
+        message = `${message} Verify a domain in Resend and set RESEND_FROM_EMAIL to an address on that domain.`;
+      }
     } catch {
       // ignore parse errors
     }

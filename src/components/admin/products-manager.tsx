@@ -15,7 +15,6 @@ import { slugify } from "@/lib/format";
 import { emptyLocalized } from "@/lib/i18n";
 import {
   categoryName,
-  productName,
   type Category,
   type MediaAsset,
   type Product,
@@ -29,6 +28,7 @@ import { useSubmitLock } from "@/hooks/use-submit-lock";
 import { useUnsavedWarning } from "@/hooks/use-unsaved-warning";
 import { LocalizedInput } from "@/components/admin/locale-fields";
 import { MultiImageUpload } from "@/components/admin/multi-image-upload";
+import { VideoUpload } from "@/components/admin/video-upload";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -45,7 +45,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 
 type ProductsManagerProps = {
   products: Product[];
@@ -59,7 +58,9 @@ const emptyProduct = {
   slug: "",
   category_id: "",
   price: "",
+  sku: "",
   images: [] as string[],
+  video_url: "" as string,
   related_product_ids: [] as string[],
   sort_order: 0,
   status: "draft" as ProductStatus,
@@ -113,11 +114,13 @@ export function ProductsManager({
       slug: product.slug,
       category_id: product.category_id ?? "",
       price: product.price?.toString() ?? "",
+      sku: product.sku ?? "",
       images: product.images?.length
         ? product.images
         : product.image_url
           ? [product.image_url]
           : [],
+      video_url: product.video_url ?? "",
       sort_order: product.sort_order,
       status: product.status ?? "draft",
       is_featured: product.is_featured,
@@ -150,7 +153,9 @@ export function ProductsManager({
     );
     formData.append("category_id", form.category_id);
     formData.append("price", form.price);
+    formData.append("sku", form.sku);
     formData.append("images", JSON.stringify(form.images));
+    formData.append("video_url", form.video_url);
     formData.append(
       "related_product_ids",
       JSON.stringify(form.related_product_ids),
@@ -296,19 +301,9 @@ export function ProductsManager({
             />
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="slug">{t("common.slug")}</Label>
-                <Input
-                  id="slug"
-                  value={form.slug}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, slug: e.target.value }))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
                 <Label>{t("products.category")}</Label>
                 <Select
-                  value={form.category_id}
+                  value={form.category_id || null}
                   onValueChange={(value) =>
                     setForm((prev) => ({
                       ...prev,
@@ -316,8 +311,16 @@ export function ProductsManager({
                     }))
                   }
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("common.select_category")} />
+                  <SelectTrigger className="w-full min-w-0">
+                    <SelectValue placeholder={t("common.select_category")}>
+                      {(value) => {
+                        if (!value) return null;
+                        const selected = categories.find((c) => c.id === value);
+                        return selected
+                          ? categoryName(selected, locale)
+                          : null;
+                      }}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {categories.map((category) => (
@@ -328,28 +331,47 @@ export function ProductsManager({
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label>{t("products.status")}</Label>
+                <Select
+                  value={form.status}
+                  onValueChange={(value) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      status: (value ?? "draft") as ProductStatus,
+                    }))
+                  }
+                >
+                  <SelectTrigger className="w-full min-w-0">
+                    <SelectValue>
+                      {(value) =>
+                        value === "published"
+                          ? t("products.published")
+                          : t("products.draft")
+                      }
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="draft">{t("products.draft")}</SelectItem>
+                    <SelectItem value="published">
+                      {t("products.published")}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="space-y-2">
-              <Label>{t("products.status")}</Label>
-              <Select
-                value={form.status}
-                onValueChange={(value) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    status: (value ?? "draft") as ProductStatus,
-                  }))
+              <Label htmlFor="sku">{t("products.sku")}</Label>
+              <Input
+                id="sku"
+                value={form.sku}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, sku: e.target.value }))
                 }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="draft">{t("products.draft")}</SelectItem>
-                  <SelectItem value="published">
-                    {t("products.published")}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+                placeholder={t("products.sku_hint")}
+                dir="ltr"
+                className="font-mono"
+              />
             </div>
             <LocalizedInput
               label={t("common.description")}
@@ -403,105 +425,21 @@ export function ProductsManager({
             </div>
             <MultiImageUpload
               value={form.images}
-              onChange={(images) => setForm((prev) => ({ ...prev, images }))}
+              onChange={(images) => {
+                setIsDirty(true);
+                setForm((prev) => ({ ...prev, images }));
+              }}
+              folder="products"
+              max={8}
+            />
+            <VideoUpload
+              value={form.video_url || null}
+              onChange={(url) => {
+                setIsDirty(true);
+                setForm((prev) => ({ ...prev, video_url: url ?? "" }));
+              }}
               folder="products"
             />
-            <div className="space-y-3 border-t border-border pt-4">
-              <p className="text-sm font-medium text-foreground">
-                {t("seo.title")}
-              </p>
-              <div className="space-y-2">
-                <Label htmlFor="seo_title">{t("seo.title")}</Label>
-                <Input
-                  id="seo_title"
-                  value={form.seo_title}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      seo_title: e.target.value,
-                    }))
-                  }
-                  placeholder={t("seo.title")}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="seo_description">{t("seo.description")}</Label>
-                <Input
-                  id="seo_description"
-                  value={form.seo_description}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      seo_description: e.target.value,
-                    }))
-                  }
-                  placeholder={t("seo.description")}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="og_image">{t("seo.og_image")}</Label>
-                <Input
-                  id="og_image"
-                  value={form.og_image}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      og_image: e.target.value,
-                    }))
-                  }
-                  placeholder="https://"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>{t("products.related")}</Label>
-              <div className="border-input max-h-36 space-y-2 overflow-y-auto rounded-md border p-3">
-                {list
-                  .filter((p) => p.id !== editingId)
-                  .map((product) => (
-                    <label
-                      key={product.id}
-                      className="flex cursor-pointer items-center gap-2 text-sm"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={form.related_product_ids.includes(product.id)}
-                        onChange={(e) => {
-                          setForm((prev) => ({
-                            ...prev,
-                            related_product_ids: e.target.checked
-                              ? [...prev.related_product_ids, product.id]
-                              : prev.related_product_ids.filter(
-                                  (id) => id !== product.id,
-                                ),
-                          }));
-                        }}
-                      />
-                      {productName(product, locale)}
-                    </label>
-                  ))}
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-6">
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={form.is_featured}
-                  onCheckedChange={(checked) =>
-                    setForm((prev) => ({ ...prev, is_featured: checked }))
-                  }
-                />
-                <Label>{t("common.featured")}</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={form.is_active}
-                  onCheckedChange={(checked) =>
-                    setForm((prev) => ({ ...prev, is_active: checked }))
-                  }
-                />
-                <Label>{t("common.active")}</Label>
-              </div>
-            </div>
             <Button
               type="submit"
               disabled={isBusy}

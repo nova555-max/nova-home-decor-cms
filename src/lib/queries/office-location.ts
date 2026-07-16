@@ -2,6 +2,10 @@ import { unstable_cache } from "next/cache";
 
 import { CACHE_TAGS } from "@/lib/constants";
 import { isLocalDevCms } from "@/lib/dev/local-mode";
+import {
+  STARTUP_QUERY_TIMEOUT_MS,
+  withTimeoutFallback,
+} from "@/lib/fetch/with-timeout";
 import { createCmsClient } from "@/lib/supabase/cms-client";
 import { createPublicClient } from "@/lib/supabase/public";
 import type { OfficeLocation } from "@/types/office-location";
@@ -41,16 +45,23 @@ async function fetchActiveOffice(): Promise<OfficeLocation | null> {
   }
 
   const supabase = createPublicClient();
-  const { data, error } = await supabase
-    .from("office_locations")
-    .select("*")
-    .eq("is_active", true)
-    .order("sort_order")
-    .limit(1)
-    .maybeSingle();
+  return withTimeoutFallback(
+    (async () => {
+      const { data, error } = await supabase
+        .from("office_locations")
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order")
+        .limit(1)
+        .maybeSingle();
 
-  if (error || !data) return null;
-  return data as OfficeLocation;
+      if (error || !data) return null;
+      return data as OfficeLocation;
+    })(),
+    STARTUP_QUERY_TIMEOUT_MS,
+    null,
+    "fetchActiveOffice",
+  );
 }
 
 export const getActiveOfficeLocation = unstable_cache(

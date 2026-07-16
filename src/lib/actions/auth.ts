@@ -124,17 +124,10 @@ export async function signInWithSuperAdmin(
 }
 
 export async function forgotPassword(email: string): Promise<ActionResult> {
-  if (isDevAuthEnabled()) {
-    return {
-      success: false,
-      error: "Dev mode: password reset is disabled. Contact the administrator.",
-    };
-  }
-
   const normalized = email.trim().toLowerCase();
-  const profile = await getAdminUserByEmail(normalized);
-  if (!profile?.is_active) {
-    return { success: true };
+
+  if (!normalized) {
+    return { success: false, error: "Email is required." };
   }
 
   if (!isResendConfigured()) {
@@ -144,21 +137,78 @@ export async function forgotPassword(email: string): Promise<ActionResult> {
     };
   }
 
+  let service: ReturnType<typeof createServiceClient>;
   try {
-    const service = createServiceClient();
+    service = createServiceClient();
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Service role key missing.";
+    if (message.includes("SUPABASE_SERVICE_ROLE_KEY")) {
+      return {
+        success: false,
+        error:
+          "Add SUPABASE_SERVICE_ROLE_KEY to .env.local to enable password reset emails.",
+      };
+    }
+    return { success: false, error: message };
+  }
+
+  // Must use service role: anon/session client cannot read admin_users while logged out (RLS).
+  const { data: profile, error: profileError } = await service
+    .from("admin_users")
+    .select("id, email, is_active")
+    .ilike("email", normalized)
+    .maybeSingle();
+
+  if (profileError) {
+    console.error("[forgotPassword] admin lookup", profileError.message);
+    return { success: false, error: "Could not verify admin account." };
+  }
+
+  const isSuperAdminEmail =
+    !!env.SUPER_ADMIN_EMAIL &&
+    normalized === env.SUPER_ADMIN_EMAIL.toLowerCase();
+
+  // Unknown / inactive emails: succeed silently (do not reveal account existence).
+  if (!isSuperAdminEmail && !profile?.is_active) {
+    return { success: true };
+  }
+
+  const appUrl = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+  const redirectTo = `${appUrl}/auth/callback?next=/admin/reset-password`;
+
+  try {
     const { data, error } = await service.auth.admin.generateLink({
       type: "recovery",
       email: normalized,
-      options: {
-        redirectTo: `${env.NEXT_PUBLIC_APP_URL}/auth/callback?next=/admin/reset-password`,
-      },
+      options: { redirectTo },
     });
 
-    const resetLink = data?.properties?.action_link;
-    if (error || !resetLink) {
+    if (error) {
+      console.error("[forgotPassword] generateLink", error.message);
+      // User may not exist in Supabase Auth yet (e.g. only DEV_AUTH credentials).
       return {
         success: false,
-        error: error?.message ?? "Could not generate password reset link.",
+        error:
+          error.message.includes("User not found") ||
+          error.status === 404
+            ? "No auth account found for this email. Sign in once with Supabase Auth, or create the user in Supabase → Authentication."
+            : error.message,
+      };
+    }
+
+    const hashedToken = data?.properties?.hashed_token;
+    const actionLink = data?.properties?.action_link;
+
+    // Prefer app-hosted verify (sets SSR cookies via verifyOtp). Fall back to Supabase action_link.
+    const resetLink = hashedToken
+      ? `${appUrl}/auth/callback?token_hash=${encodeURIComponent(hashedToken)}&type=recovery&next=${encodeURIComponent("/admin/reset-password")}`
+      : actionLink;
+
+    if (!resetLink) {
+      return {
+        success: false,
+        error: "Could not generate password reset link.",
       };
     }
 
@@ -168,6 +218,7 @@ export async function forgotPassword(email: string): Promise<ActionResult> {
     });
 
     if (!sent.ok) {
+      console.error("[forgotPassword] resend", sent.error);
       return { success: false, error: sent.error };
     }
 
@@ -175,6 +226,7 @@ export async function forgotPassword(email: string): Promise<ActionResult> {
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Could not send reset email.";
+    console.error("[forgotPassword]", message);
     if (message.includes("SUPABASE_SERVICE_ROLE_KEY")) {
       return {
         success: false,

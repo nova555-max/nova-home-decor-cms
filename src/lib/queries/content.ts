@@ -7,6 +7,10 @@ import {
   saveLocalContentStrings,
 } from "@/lib/dev/local-content";
 import { isLocalDevCms } from "@/lib/dev/local-mode";
+import {
+  STARTUP_QUERY_TIMEOUT_MS,
+  withTimeoutFallback,
+} from "@/lib/fetch/with-timeout";
 import { createCmsClient } from "@/lib/supabase/cms-client";
 import { createPublicClient } from "@/lib/supabase/public";
 import type {
@@ -146,14 +150,21 @@ async function fetchContentRows(): Promise<ContentRow[]> {
   }
 
   const supabase = createPublicClient();
-  const { data, error } = await supabase
-    .from("website_content_strings")
-    .select(
-      "id, content_key, draft_value, published_value, version, status, published_at, versions, updated_at",
-    );
+  return withTimeoutFallback(
+    (async () => {
+      const { data, error } = await supabase
+        .from("website_content_strings")
+        .select(
+          "id, content_key, draft_value, published_value, version, status, published_at, versions, updated_at",
+        );
 
-  if (error || !data?.length) return [];
-  return data as ContentRow[];
+      if (error || !data?.length) return [];
+      return data as ContentRow[];
+    })(),
+    STARTUP_QUERY_TIMEOUT_MS,
+    [],
+    "fetchContentRows",
+  );
 }
 
 export const getPublishedContentStrings = unstable_cache(

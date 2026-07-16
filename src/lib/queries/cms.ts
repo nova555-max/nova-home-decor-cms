@@ -24,6 +24,10 @@ import {
   listLocalMediaAssets,
 } from "@/lib/dev/local-uploads";
 import { serializeCategories } from "@/lib/categories/normalize";
+import {
+  STARTUP_QUERY_TIMEOUT_MS,
+  withTimeoutFallback,
+} from "@/lib/fetch/with-timeout";
 import { createCmsClient } from "@/lib/supabase/cms-client";
 import { createPublicClient } from "@/lib/supabase/public";
 import type {
@@ -61,21 +65,28 @@ function withSettingsDefaults(
 }
 
 async function fetchSettings(): Promise<WebsiteSettings | null> {
-  const supabase = createPublicClient();
-  const { data, error } = await supabase
-    .from("website_settings")
-    .select("*")
-    .limit(1)
-    .maybeSingle();
+  return withTimeoutFallback(
+    (async () => {
+      const supabase = createPublicClient();
+      const { data, error } = await supabase
+        .from("website_settings")
+        .select("*")
+        .limit(1)
+        .maybeSingle();
 
-  if (error) {
-    if (process.env.NODE_ENV === "development") {
-      console.warn("[settings:fetch]", error.message);
-    }
-    return null;
-  }
-  if (!data) return null;
-  return withSettingsDefaults(data as WebsiteSettings);
+      if (error) {
+        if (process.env.NODE_ENV === "development") {
+          console.warn("[settings:fetch]", error.message);
+        }
+        return null;
+      }
+      if (!data) return null;
+      return withSettingsDefaults(data as WebsiteSettings);
+    })(),
+    STARTUP_QUERY_TIMEOUT_MS,
+    null,
+    "fetchSettings",
+  );
 }
 
 async function fetchCategories(activeOnly = true): Promise<Category[]> {
@@ -83,93 +94,135 @@ async function fetchCategories(activeOnly = true): Promise<Category[]> {
     return listMergedCategories(activeOnly);
   }
 
-  const supabase = createPublicClient();
-  let query = supabase
-    .from("categories")
-    .select("*")
-    .is("deleted_at", null)
-    .order("sort_order");
-  if (activeOnly) query = query.eq("is_active", true);
-  const { data, error } = await query;
-  if (error) {
-    if (process.env.NODE_ENV === "development") {
-      return listLocalCategories(activeOnly);
-    }
-    return [];
-  }
-  return data ?? [];
+  return withTimeoutFallback(
+    (async () => {
+      const supabase = createPublicClient();
+      let query = supabase
+        .from("categories")
+        .select("*")
+        .is("deleted_at", null)
+        .order("sort_order");
+      if (activeOnly) query = query.eq("is_active", true);
+      const { data, error } = await query;
+      if (error) {
+        if (process.env.NODE_ENV === "development") {
+          return listLocalCategories(activeOnly);
+        }
+        return [];
+      }
+      return data ?? [];
+    })(),
+    STARTUP_QUERY_TIMEOUT_MS,
+    [],
+    "fetchCategories",
+  );
 }
 
 async function fetchProducts(activeOnly = true): Promise<Product[]> {
-  const supabase = createPublicClient();
-  let query = supabase
-    .from("products")
-    .select("*, category:categories(*)")
-    .is("deleted_at", null)
-    .order("sort_order");
-  if (activeOnly) {
-    query = query.eq("is_active", true).eq("status", "published");
-  }
-  const { data, error } = await query;
-  if (error) return [];
-  return (data ?? []) as Product[];
+  return withTimeoutFallback(
+    (async () => {
+      const supabase = createPublicClient();
+      let query = supabase
+        .from("products")
+        .select("*, category:categories(*)")
+        .is("deleted_at", null)
+        .order("sort_order");
+      if (activeOnly) {
+        query = query.eq("is_active", true).eq("status", "published");
+      }
+      const { data, error } = await query;
+      if (error) return [];
+      return (data ?? []) as Product[];
+    })(),
+    STARTUP_QUERY_TIMEOUT_MS,
+    [],
+    "fetchProducts",
+  );
 }
 
 async function fetchProjects(activeOnly = true): Promise<Project[]> {
-  const supabase = createPublicClient();
-  let query = supabase
-    .from("projects")
-    .select("*")
-    .is("deleted_at", null)
-    .order("sort_order");
-  if (activeOnly) query = query.eq("is_active", true);
-  const { data, error } = await query;
-  if (error) return [];
-  return data ?? [];
+  return withTimeoutFallback(
+    (async () => {
+      const supabase = createPublicClient();
+      let query = supabase
+        .from("projects")
+        .select("*")
+        .is("deleted_at", null)
+        .order("sort_order");
+      if (activeOnly) query = query.eq("is_active", true);
+      const { data, error } = await query;
+      if (error) return [];
+      return data ?? [];
+    })(),
+    STARTUP_QUERY_TIMEOUT_MS,
+    [],
+    "fetchProjects",
+  );
 }
 
 async function fetchGallery(activeOnly = true): Promise<GalleryItem[]> {
-  const supabase = createPublicClient();
-  let query = supabase
-    .from("gallery_items")
-    .select("*")
-    .is("deleted_at", null)
-    .order("sort_order");
-  if (activeOnly) query = query.eq("is_active", true);
-  const { data, error } = await query;
-  if (error) return [];
-  return data ?? [];
+  return withTimeoutFallback(
+    (async () => {
+      const supabase = createPublicClient();
+      let query = supabase
+        .from("gallery_items")
+        .select("*")
+        .is("deleted_at", null)
+        .order("sort_order");
+      if (activeOnly) query = query.eq("is_active", true);
+      const { data, error } = await query;
+      if (error) return [];
+      return data ?? [];
+    })(),
+    STARTUP_QUERY_TIMEOUT_MS,
+    [],
+    "fetchGallery",
+  );
 }
 
 async function fetchHomepage(): Promise<HomepageContent | null> {
-  const supabase = createPublicClient();
-  const { data, error } = await supabase
-    .from("homepage_content")
-    .select("*")
-    .limit(1)
-    .single();
-  if (error || !data) return null;
-  const section_manager = normalizeSectionManager(
-    data.section_manager as never,
-    {
-      ...DEFAULT_SECTION_VISIBILITY,
-      ...(data.section_visibility ?? {}),
-    },
+  return withTimeoutFallback(
+    (async () => {
+      const supabase = createPublicClient();
+      const { data, error } = await supabase
+        .from("homepage_content")
+        .select("*")
+        .limit(1)
+        .single();
+      if (error || !data) return null;
+      const section_manager = normalizeSectionManager(
+        data.section_manager as never,
+        {
+          ...DEFAULT_SECTION_VISIBILITY,
+          ...(data.section_visibility ?? {}),
+        },
+      );
+      return {
+        ...data,
+        section_manager,
+        section_visibility: deriveLegacyVisibility(section_manager),
+      } as HomepageContent;
+    })(),
+    STARTUP_QUERY_TIMEOUT_MS,
+    null,
+    "fetchHomepage",
   );
-  return {
-    ...data,
-    section_manager,
-    section_visibility: deriveLegacyVisibility(section_manager),
-  } as HomepageContent;
 }
 
 async function fetchTestimonials(activeOnly = true): Promise<Testimonial[]> {
-  const supabase = createPublicClient();
-  let query = supabase.from("testimonials").select("*").order("sort_order");
-  if (activeOnly) query = query.eq("is_active", true);
-  const { data, error } = await query;
-  if (error) return [];
-  return (data ?? []) as Testimonial[];
+  return withTimeoutFallback(
+    (async () => {
+      const supabase = createPublicClient();
+      let query = supabase.from("testimonials").select("*").order("sort_order");
+      if (activeOnly) query = query.eq("is_active", true);
+      const { data, error } = await query;
+      if (error) return [];
+      return (data ?? []) as Testimonial[];
+    })(),
+    STARTUP_QUERY_TIMEOUT_MS,
+    [],
+    "fetchTestimonials",
+  );
 }
 
 export const getWebsiteSettings = unstable_cache(

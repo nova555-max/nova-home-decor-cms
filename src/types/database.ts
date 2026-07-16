@@ -51,7 +51,10 @@ export type HeroSection = {
   cta_primary: string;
   cta_secondary: string;
   cta_contact?: string;
+  /** Primary / legacy single image (kept in sync with images[0]). */
   image_url?: string;
+  /** Up to 8 hero background images; first is the primary. */
+  images?: string[];
 };
 
 export type StatItem = {
@@ -202,8 +205,12 @@ export type Product = {
   name_i18n: LocalizedText | null;
   description_i18n: LocalizedText | null;
   price: number | null;
+  /** Warehouse / inventory product code. */
+  sku: string | null;
   image_url: string | null;
   images: string[];
+  /** Optional product video (max 1; CMS enforces ≤30s). */
+  video_url: string | null;
   related_product_ids: string[];
   status: ProductStatus;
   is_featured: boolean;
