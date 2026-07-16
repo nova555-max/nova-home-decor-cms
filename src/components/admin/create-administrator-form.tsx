@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { createFirstAdministrator } from "@/lib/actions/setup";
 import { useAdminT } from "@/hooks";
+import { ButtonLink } from "@/components/ui/button-link";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -34,7 +35,7 @@ export function CreateAdministratorForm() {
       const result = await createFirstAdministrator(email, password, confirm);
       if (result.success) {
         toast.success(t("auth.setup_success"));
-        window.location.assign("/admin");
+        window.location.assign("/login");
         return;
       }
       toast.error(result.error);
@@ -51,9 +52,6 @@ export function CreateAdministratorForm() {
           {t("auth.setup_title")}
         </CardTitle>
         <CardDescription>{t("auth.setup_desc")}</CardDescription>
-        <p className="text-muted-foreground mx-auto max-w-sm text-xs leading-relaxed">
-          {t("auth.admin_locked_notice")}
-        </p>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -104,6 +102,15 @@ export function CreateAdministratorForm() {
               t("auth.setup_submit")
             )}
           </Button>
+          <div className="text-center">
+            <ButtonLink
+              href="/login"
+              variant="link"
+              className="text-sm text-[var(--gold)]"
+            >
+              {t("auth.back_to_login")}
+            </ButtonLink>
+          </div>
         </form>
       </CardContent>
     </Card>

@@ -6,9 +6,33 @@ import {
   hasAdministrator,
 } from "@/lib/queries/admin-users";
 import { createServiceClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 
 type ActionResult = { success: true } | { success: false; error: string };
+
+export type AdministratorRegistrationStatus =
+  | { canRegister: true }
+  | { canRegister: false; supportEmail: string | null };
+
+export async function getAdministratorRegistrationStatus(): Promise<AdministratorRegistrationStatus> {
+  try {
+    if (await hasAdministrator()) {
+      return {
+        canRegister: false,
+        supportEmail: process.env.SUPER_ADMIN_EMAIL?.trim() || null,
+      };
+    }
+    return { canRegister: true };
+  } catch (err) {
+    console.error(
+      "[getAdministratorRegistrationStatus]",
+      err instanceof Error ? err.message : err,
+    );
+    return {
+      canRegister: false,
+      supportEmail: process.env.SUPER_ADMIN_EMAIL?.trim() || null,
+    };
+  }
+}
 
 /**
  * First-install only: create the single lifetime administrator.
@@ -122,18 +146,6 @@ export async function createFirstAdministrator(
       };
     }
     return { success: false, error: "Could not create administrator profile." };
-  }
-
-  // Sign the new admin in so they land in the CMS.
-  const supabase = await createClient();
-  const { error: signInError } = await supabase.auth.signInWithPassword({
-    email: normalized,
-    password,
-  });
-
-  if (signInError) {
-    console.error("[createFirstAdministrator] signIn", signInError.message);
-    // Account exists; they can log in manually.
   }
 
   return { success: true };

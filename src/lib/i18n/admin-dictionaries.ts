@@ -645,6 +645,11 @@ const ku = {
     confirm_password: "دووبارەکردنەوەی وشەی نهێنی",
     update_password: "نوێکردنەوەی وشەی نهێنی",
     check_email: "ئیمەیڵەکەت بپشکنە بۆ کۆدی پشتڕاستکردنەوە",
+    create_account: "دروستکردنی ئەکاونت",
+    admin_exists_title: "ئەکاونتی بەڕێوەبەر هەیە",
+    admin_exists_message:
+      "پێشتر ئەکاونتی بەڕێوەبەر بۆ ئەم سیستەمە دروست کراوە. ناتوانرێت ئەکاونتی بەڕێوەبەری تر دروست بکرێت. ئەگەر پێویستت بە دەستگەیشتنە، تکایە پەیوەندی بە بەڕێوەبەری سیستەم یان پشتیوانی تەکنیکی بکە.",
+    contact_support: "پەیوەندی بە پشتیوانی",
     admin_locked_notice:
       "ببورە، ڕێگە پێنەدراوە ئەدمینی تر زیاد بکەیت. لەبەر ئاسایشی سیستەمەکە، تکایە پەیوەندی بە خاوەن سیستەمەکە بکە.",
     password_mismatch: "وشەی نهێنی یەکسان نییە",
@@ -1298,6 +1303,11 @@ const ar = {
     confirm_password: "تأكيد كلمة المرور",
     update_password: "تحديث كلمة المرور",
     check_email: "تحقق من بريدك للحصول على رمز التحقق",
+    create_account: "إنشاء حساب",
+    admin_exists_title: "حساب المسؤول موجود",
+    admin_exists_message:
+      "تم إنشاء حساب مسؤول لهذا النظام مسبقاً. لا يمكن إنشاء حساب مسؤول آخر. إذا كنت بحاجة إلى الوصول، يرجى التواصل مع مسؤول النظام أو الدعم الفني.",
+    contact_support: "تواصل مع الدعم",
     admin_locked_notice:
       "عذراً، غير مسموح بإضافة مسؤول آخر. حفاظاً على أمان النظام، يرجى التواصل مع مالك النظام.",
     password_mismatch: "كلمات المرور غير متطابقة",
@@ -1951,6 +1961,11 @@ const en = {
     confirm_password: "Confirm password",
     update_password: "Update password",
     check_email: "Check your email for the verification code",
+    create_account: "Create Account",
+    admin_exists_title: "Administrator already exists",
+    admin_exists_message:
+      "An administrator account has already been created for this system. It is not possible to create another administrator account. If you need access, please contact the system administrator or technical support.",
+    contact_support: "Contact Support",
     admin_locked_notice:
       "Sorry, you are not allowed to add another administrator. For system security, please contact the system owner.",
     password_mismatch: "Passwords do not match",

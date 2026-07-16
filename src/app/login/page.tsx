@@ -1,13 +1,12 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
-import { CreateAdministratorForm } from "@/components/admin/create-administrator-form";
 import { isDevAuthEnabled } from "@/lib/auth/dev-session";
 import { LoginForm } from "@/components/admin/login-form";
 import { LoginThemeToggle } from "@/components/admin/login-theme-toggle";
 import { Skeleton } from "@/components/ui/skeleton";
+import { env } from "@/config/env";
 import { getAdminContext } from "@/lib/supabase/auth";
-import { getAdministratorGate } from "@/lib/queries/admin-users";
 
 export default async function LoginPage() {
   const ctx = await getAdminContext();
@@ -15,11 +14,9 @@ export default async function LoginPage() {
     redirect("/admin");
   }
 
-  const gate = await getAdministratorGate();
   const devLogin = isDevAuthEnabled();
-
   const devEmail = devLogin ? process.env.DEV_ADMIN_EMAIL?.trim() : undefined;
-  const showCreateAdministrator = gate === "needs_setup" && !devLogin;
+  const supportEmail = env.SUPER_ADMIN_EMAIL ?? null;
 
   return (
     <div className="relative flex min-h-svh items-center justify-center overflow-hidden bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
@@ -29,11 +26,11 @@ export default async function LoginPage() {
       <Suspense
         fallback={<Skeleton className="h-80 w-full max-w-md rounded-[20px]" />}
       >
-        {showCreateAdministrator ? (
-          <CreateAdministratorForm />
-        ) : (
-          <LoginForm devEmail={devEmail} devLoginEnabled={devLogin} />
-        )}
+        <LoginForm
+          devEmail={devEmail}
+          devLoginEnabled={devLogin}
+          supportEmail={supportEmail}
+        />
       </Suspense>
     </div>
   );
