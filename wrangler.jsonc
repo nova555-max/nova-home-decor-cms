@@ -7,8 +7,15 @@
     "nodejs_compat",
     "global_fetch_strictly_public"
   ],
-  // Keep dashboard Variables & Secrets across deploys (do not wipe remote vars).
+  // Keep dashboard Secrets across deploys (do not wipe remote encrypted secrets).
   "keep_vars": true,
+  // Public runtime config — safe to commit. Secrets stay in the Cloudflare dashboard.
+  "vars": {
+    "NEXT_PUBLIC_SUPABASE_URL": "https://nblnwcacdlafvgrxfldv.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_q5BPT1JI_h9D3sZ855X3Iw_OI14rGW",
+    "NEXT_PUBLIC_APP_URL": "https://nova-home-decor-cms.novahome756.workers.dev",
+    "NEXT_PUBLIC_DEFAULT_LOCALE": "ku"
+  },
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
