@@ -23,8 +23,12 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 
 /**
  * Refresh Supabase cookies and forward pathname.
- * Auth redirects are handled in Server Components to avoid breaking RSC fetches
- * ("Failed to fetch" from fetchServerResponse when middleware returns 307).
+ *
+ * Edge Runtime notes:
+ * - Only imports Edge-compatible modules (next/server, @supabase/ssr, env helpers).
+ * - @supabase/supabase-js >= 2.110.5 avoids static `process.version` access
+ *   (uses globalThis['process']) so Next.js Edge analysis stays clean.
+ * - Auth redirects stay in Server Components to avoid breaking RSC fetches.
  */
 export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
