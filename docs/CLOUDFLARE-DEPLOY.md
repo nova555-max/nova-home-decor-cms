@@ -17,7 +17,7 @@
 | Added `wrangler.jsonc` | Worker entry, assets, `nodejs_compat`, Images binding |
 | Added `open-next.config.ts` | OpenNext Cloudflare configuration |
 | Added `public/_headers` | Long-cache headers for `/_next/static/*` |
-| Added `.node-version` (22) | Pin Node.js for CI / Workers Builds (Wrangler 4 requires Node 22+) |
+| Added `.node-version` (20) | Pin Node.js for CI / Workers Builds |
 | Updated `next.config.ts` | `initOpenNextCloudflareForDev()`, conditional `standalone` for Docker only, production `serverActions.allowedOrigins` |
 | Updated `package.json` scripts | `preview:cloudflare`, `deploy:cloudflare`, standard `next build` |
 | Updated `Dockerfile` | `DOCKER_BUILD=1` preserves Docker standalone builds |
@@ -53,7 +53,7 @@
 | **Build command** | `npm ci && npx opennextjs-cloudflare build` |
 | **Build output directory** | `.open-next` *(Wrangler uses worker bundle inside)* |
 | **Root directory** | `/` (or `nova-home-decor-cms` if monorepo) |
-| **Node.js version** | `22` (required — Wrangler 4 needs Node 22+) |
+| **Node.js version** | `20` (Cloudflare Workers Builds default) |
 
 For **Workers Builds** (recommended for OpenNext):
 
@@ -84,7 +84,7 @@ Cloudflare Workers Builds uses **two** env sections. Missing build-time vars cau
 https://YOUR-PROJECT.supabase.co
 ```
 
-If deploy fails with `Wrangler requires at least Node.js v22`, set **Build variables** `NODE_VERSION` = `22` (or rely on repo `.node-version`).
+**Wrangler:** pin `wrangler@4.86.0` in `package.json` — newer Wrangler 4.x requires Node 22, while Cloudflare Builds still runs Node 20.
 
 #### Public (`NEXT_PUBLIC_*`)
 
