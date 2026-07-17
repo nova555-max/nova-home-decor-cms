@@ -19,7 +19,7 @@
 | Added `public/_headers` | Long-cache headers for `/_next/static/*` |
 | Added `.node-version` (20) | Pin Node.js for CI / Workers Builds |
 | Updated `next.config.ts` | `initOpenNextCloudflareForDev()`, conditional `standalone` for Docker only, production `serverActions.allowedOrigins` |
-| Updated `package.json` scripts | `preview:cloudflare`, `deploy:cloudflare`, standard `next build` |
+| Updated `package.json` scripts | `build` → OpenNext Cloudflare bundle; `build:docker` for Docker |
 | Updated `Dockerfile` | `DOCKER_BUILD=1` preserves Docker standalone builds |
 | Updated `.env.production.example` | Complete production env var list |
 | Excluded `scripts/` from `tsconfig` | Fixes build typecheck on CLI scripts |
@@ -50,7 +50,8 @@
 | Setting | Value |
 |---------|-------|
 | **Framework preset** | None (or Next.js if offered — verify command below) |
-| **Build command** | `npm ci && npx opennextjs-cloudflare build` |
+| **Build command** | `npm run build` |
+| **Deploy command** | `npx wrangler deploy` |
 | **Build output directory** | `.open-next` *(Wrangler uses worker bundle inside)* |
 | **Root directory** | `/` (or `nova-home-decor-cms` if monorepo) |
 | **Node.js version** | `20` (Cloudflare Workers Builds default) |
@@ -59,9 +60,12 @@ For **Workers Builds** (recommended for OpenNext):
 
 ```bash
 npm ci
-npx opennextjs-cloudflare build
+npm run build
 npx wrangler deploy
 ```
+
+`npm run build` runs `opennextjs-cloudflare build`, which creates `.open-next/worker.js`
+for the deploy step.
 
 Or locally after configuring secrets:
 
@@ -201,11 +205,8 @@ Deploy when all production environment variables are set and Supabase redirect U
 ### Quick Commands
 
 ```bash
-# Verify Next.js build
+# Cloudflare worker bundle (same as Workers Builds)
 npm run build
-
-# Build Cloudflare worker bundle
-npx opennextjs-cloudflare build
 
 # Preview locally (Workers runtime)
 npm run preview:cloudflare
@@ -228,7 +229,7 @@ npm run deploy:cloudflare
 
 | Target | Build command | Output |
 |--------|---------------|--------|
-| **Cloudflare** | `npm run build` → `opennextjs-cloudflare build` | `.open-next/` worker |
-| **Docker / VPS** | `DOCKER_BUILD=1 npm run build` | `.next/standalone/` |
+| **Cloudflare** | `npm run build` | `.open-next/` worker |
+| **Docker / VPS** | `npm run build:docker` (`DOCKER_BUILD=1` in Dockerfile) | `.next/standalone/` |
 
 Both paths coexist without breaking the other.
