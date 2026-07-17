@@ -19,7 +19,7 @@
 | Added `public/_headers` | Long-cache headers for `/_next/static/*` |
 | Added `.node-version` (20) | Pin Node.js for CI / Workers Builds |
 | Updated `next.config.ts` | `initOpenNextCloudflareForDev()`, conditional `standalone` for Docker only, production `serverActions.allowedOrigins` |
-| Updated `package.json` scripts | `build` = `next build`; `build:cloudflare` for Workers Builds |
+| Updated `package.json` scripts | `build` = OpenNext; `build:next` / `build:docker` for plain Next.js |
 | Updated `Dockerfile` | `DOCKER_BUILD=1` preserves Docker standalone builds |
 | Updated `.env.production.example` | Complete production env var list |
 | Excluded `scripts/` from `tsconfig` | Fixes build typecheck on CLI scripts |
@@ -50,25 +50,24 @@
 | Setting | Value |
 |---------|-------|
 | **Framework preset** | None (or Next.js if offered — verify command below) |
-| **Build command** | `npx opennextjs-cloudflare build` |
+| **Build command** | `npm run build` |
 | **Deploy command** | `npx wrangler deploy` |
 | **Build output directory** | `.open-next` *(Wrangler uses worker bundle inside)* |
 | **Root directory** | `/` (or `nova-home-decor-cms` if monorepo) |
 | **Node.js version** | `20` (Cloudflare Workers Builds default) |
 
-> **Do not** set Build command to `npm run build`. OpenNext already runs `next build`
-> internally; pointing Build at OpenNext again causes an infinite loop and a timeout.
+`npm run build` runs `opennextjs-cloudflare build`. OpenNext then runs `npx next build`
+(via `buildCommand` in `open-next.config.ts`) so there is no infinite loop.
 
 For **Workers Builds** (recommended for OpenNext):
 
 ```bash
 npm ci
-npx opennextjs-cloudflare build
+npm run build
 npx wrangler deploy
 ```
 
-`opennextjs-cloudflare build` runs `next build`, then creates `.open-next/worker.js`
-for the deploy step.
+This creates `.open-next/worker.js` for the deploy step.
 
 Or locally after configuring secrets:
 
@@ -167,7 +166,7 @@ npm run preview:cloudflare
 | 1 | Cloudflare Pages / Workers compatibility | **PASS** | OpenNext adapter configured |
 | 2 | Framework detection (Next.js 15) | **PASS** | App Router, 15.5.20 |
 | 3 | Cloudflare config files | **PASS** | `wrangler.jsonc`, `open-next.config.ts`, `_headers` |
-| 4 | Production build settings | **PASS** | Build command = `npx opennextjs-cloudflare build` |
+| 4 | Production build settings | **PASS** | `npm run build` → OpenNext (`buildCommand: npx next build`) |
 | 5 | Build optimized for Cloudflare | **PASS** | OpenNext bundle + static asset headers |
 | 6 | Vercel conflicts removed | **PASS** | No `vercel.json`; `standalone` only for Docker |
 | 7 | Environment variables documented | **PASS** | `.env.production.example` complete |
@@ -208,8 +207,8 @@ Deploy when all production environment variables are set and Supabase redirect U
 ### Quick Commands
 
 ```bash
-# Cloudflare worker bundle (same as Workers Builds)
-npm run build:cloudflare
+# Cloudflare worker bundle (same as Workers Builds `npm run build`)
+npm run build
 
 # Preview locally (Workers runtime)
 npm run preview:cloudflare
@@ -232,7 +231,7 @@ npm run deploy:cloudflare
 
 | Target | Build command | Output |
 |--------|---------------|--------|
-| **Cloudflare** | `npx opennextjs-cloudflare build` | `.open-next/` worker |
+| **Cloudflare** | `npm run build` | `.open-next/` worker |
 | **Docker / VPS** | `npm run build:docker` (`DOCKER_BUILD=1` in Dockerfile) | `.next/standalone/` |
 
 Both paths coexist without breaking the other.
