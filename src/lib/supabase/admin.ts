@@ -1,7 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
-import { env } from "@/config/env";
-import { getSupabaseUrl } from "@/lib/env/supabase-public";
+import { requireSupabasePublicEnv } from "@/lib/env/supabase-public";
 
 export function getServiceRoleKey(): string | null {
   return process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || null;
@@ -15,10 +14,9 @@ export function createServiceClient() {
     );
   }
 
-  return createClient(
-    getSupabaseUrl() ?? env.NEXT_PUBLIC_SUPABASE_URL,
-    serviceRoleKey,
-    {
+  const { url } = requireSupabasePublicEnv();
+
+  return createClient(url, serviceRoleKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,

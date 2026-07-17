@@ -71,7 +71,18 @@ npm run deploy:cloudflare
 
 ### 4. Environment Variables (Production)
 
-Set in **Cloudflare Dashboard → Settings → Environment variables** (encrypt server-only values).
+Cloudflare Workers Builds uses **two** env sections. Missing build-time vars causes `Invalid environment variables` during `next build`.
+
+| Section | When used | What to put there |
+|---------|-----------|-------------------|
+| **Settings → Builds → Build variables and secrets** | During `npm run build` / OpenNext build | All `NEXT_PUBLIC_*` required by Next.js (inlined at build time) |
+| **Settings → Variables and Secrets** | At Worker runtime | Server secrets (`SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `GEMINI_API_KEY`, etc.) |
+
+`NEXT_PUBLIC_SUPABASE_URL` must be the project root only — **not** `/rest/v1/`:
+
+```text
+https://YOUR-PROJECT.supabase.co
+```
 
 #### Public (`NEXT_PUBLIC_*`)
 
