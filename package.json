@@ -23,6 +23,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
+    "type-check": "tsc --noEmit",
     "setup:check": "node scripts/check-setup.mjs"
   },
   "dependencies": {
