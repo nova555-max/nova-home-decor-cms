@@ -208,7 +208,10 @@ export async function forgotPassword(email: string): Promise<ActionResult> {
 
   if (profileError) {
     console.error("[forgotPassword] admin lookup", profileError.message);
-    return { success: false, error: "Could not verify admin account." };
+    return {
+      success: false,
+      error: `Could not verify admin account (${profileError.message}). Check SUPABASE_SERVICE_ROLE_KEY.`,
+    };
   }
 
   const isSuperAdminEmail =
@@ -216,12 +219,20 @@ export async function forgotPassword(email: string): Promise<ActionResult> {
     normalized === env.SUPER_ADMIN_EMAIL.toLowerCase();
 
   if (!isSuperAdminEmail && !profile?.is_active) {
-    return { success: false, error: "Email not found." };
+    return {
+      success: false,
+      error:
+        "Email not found. Create the first admin at /admin/setup, or use a registered admin email.",
+    };
   }
 
   const authUserId = await findAuthUserIdByEmail(service, normalized);
   if (!authUserId) {
-    return { success: false, error: "Email not found." };
+    return {
+      success: false,
+      error:
+        "Email not found in login users. Create the admin at /admin/setup first.",
+    };
   }
 
   const { data: recent } = await service

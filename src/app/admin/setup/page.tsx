@@ -9,9 +9,12 @@ export default async function CreateAdministratorPage() {
   const gate = await getAdministratorGate();
 
   // Permanently hidden once any administrator exists.
-  if (gate === "ready" || gate === "unknown") {
+  if (gate === "ready") {
     redirect(LOGIN_PATH);
   }
+
+  // Service role missing/broken — show setup form anyway so first install is possible
+  // once Cloudflare env is fixed; createFirstAdministrator will return a clear error.
 
   return (
     <div className="relative flex min-h-svh items-center justify-center overflow-hidden bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">

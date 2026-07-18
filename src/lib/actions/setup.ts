@@ -27,10 +27,8 @@ export async function getAdministratorRegistrationStatus(): Promise<Administrato
       "[getAdministratorRegistrationStatus]",
       err instanceof Error ? err.message : err,
     );
-    return {
-      canRegister: false,
-      supportEmail: process.env.SUPER_ADMIN_EMAIL?.trim() || null,
-    };
+    // If service role is broken, still allow opening setup so the user sees a clear error.
+    return { canRegister: true };
   }
 }
 
