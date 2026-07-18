@@ -215,8 +215,8 @@ export function checkRequiredEnv(): EnvCheck[] {
     checks.push({
       name: "GEMINI_API_KEY",
       status: "missing",
-      detail: "Missing. Required for AI chat. Add Secret GEMINI_API_KEY.",
-      required: true,
+      detail: "Missing. Optional for login/forgot-password; required only for AI chat.",
+      required: false,
       secret: true,
     });
   } else {
@@ -224,7 +224,7 @@ export function checkRequiredEnv(): EnvCheck[] {
       name: "GEMINI_API_KEY",
       status: "ok",
       detail: "Present",
-      required: true,
+      required: false,
       secret: true,
     });
   }

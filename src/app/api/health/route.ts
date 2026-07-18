@@ -247,7 +247,13 @@ export async function GET() {
     admin,
   };
 
-  const ok = Object.values(services).every((s) => s.ok);
+  const ok =
+    services.env.ok &&
+    services.supabase.ok &&
+    services.serviceRole.ok &&
+    services.resend.ok &&
+    services.admin.ok;
+  // Gemini is optional for auth; reported but does not fail overall health.
 
   return NextResponse.json(
     {

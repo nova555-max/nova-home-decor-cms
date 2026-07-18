@@ -5,17 +5,21 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
- * Public env must be present at `next build` so the client bundle gets inlined
- * values. Set these in Cloudflare → Builds → Build variables and secrets
- * (and runtime Variables). No secrets are hardcoded here.
+ * Public env for Next client bundle. Prefer Cloudflare Build variables;
+ * fallbacks match wrangler.jsonc so Workers Builds still inline correctly.
+ * Secrets are never hardcoded here.
  */
 const publicEnv = {
-  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || "",
+  NEXT_PUBLIC_SUPABASE_URL:
+    process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ||
+    "https://znsoeketfjnnpirglosq.supabase.co",
   NEXT_PUBLIC_SUPABASE_ANON_KEY:
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ||
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim() ||
-    "",
-  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL?.trim() || "",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpmc29la2V0ZmpubnBpcmdsb3NxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NjI1NjAsImV4cCI6MjA5OTUzODU2MH0.1bpzOD3aOGz88h-C_pPtUopWPcMYW3b2OxR2t-ioc40",
+  NEXT_PUBLIC_APP_URL:
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    "https://nova-home-decor-cms.novahome756.workers.dev",
   NEXT_PUBLIC_DEFAULT_LOCALE:
     process.env.NEXT_PUBLIC_DEFAULT_LOCALE?.trim() || "ku",
 };
@@ -26,6 +30,7 @@ function serverActionOrigins(): string[] {
     "127.0.0.1:3000",
     "localhost:3001",
     "127.0.0.1:3001",
+    "nova-home-decor-cms.novahome756.workers.dev",
   ]);
 
   const appUrl = publicEnv.NEXT_PUBLIC_APP_URL;
@@ -34,12 +39,9 @@ function serverActionOrigins(): string[] {
       const host = new URL(appUrl).host;
       if (host) origins.add(host);
     } catch {
-      /* ignore invalid URL at build time */
+      /* ignore */
     }
   }
-
-  // Cloudflare workers.dev default host when APP_URL is unset at build time
-  origins.add("nova-home-decor-cms.novahome756.workers.dev");
 
   return [...origins];
 }
@@ -48,7 +50,6 @@ const isDockerBuild = process.env.DOCKER_BUILD === "1";
 
 const nextConfig: NextConfig = {
   env: publicEnv,
-  // Standalone is for Docker/VPS only. Cloudflare uses @opennextjs/cloudflare.
   ...(isDockerBuild ? { output: "standalone" as const } : {}),
   reactStrictMode: true,
   poweredByHeader: false,
@@ -81,7 +82,6 @@ const nextConfig: NextConfig = {
 
 export default nextConfig;
 
-// Wrangler/miniflare init slows or blocks local CMS dev; enable only for Cloudflare preview.
 const cloudflareDevEnabled =
   process.env.CLOUDFLARE_DEV === "1" ||
   process.env.npm_lifecycle_event?.includes("cloudflare") === true;
