@@ -6,19 +6,16 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * Public env must be present at `next build` so the client bundle gets inlined
- * values. Cloudflare Build variables are often empty; wrangler `vars` only
- * cover Worker runtime/SSR. Fallbacks keep production builds bootable.
+ * values. Set these in Cloudflare → Builds → Build variables and secrets
+ * (and runtime Variables). No secrets are hardcoded here.
  */
 const publicEnv = {
-  NEXT_PUBLIC_SUPABASE_URL:
-    process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ||
-    "https://nblnwcacdlafvgrxfldv.supabase.co",
+  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || "",
   NEXT_PUBLIC_SUPABASE_ANON_KEY:
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ||
-    "sb_publishable_q5BPT1JI_h9D3sZ855X3Iw_OI14rGW",
-  NEXT_PUBLIC_APP_URL:
-    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-    "https://nova-home-decor-cms.novahome756.workers.dev",
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim() ||
+    "",
+  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL?.trim() || "",
   NEXT_PUBLIC_DEFAULT_LOCALE:
     process.env.NEXT_PUBLIC_DEFAULT_LOCALE?.trim() || "ku",
 };
@@ -40,6 +37,9 @@ function serverActionOrigins(): string[] {
       /* ignore invalid URL at build time */
     }
   }
+
+  // Cloudflare workers.dev default host when APP_URL is unset at build time
+  origins.add("nova-home-decor-cms.novahome756.workers.dev");
 
   return [...origins];
 }

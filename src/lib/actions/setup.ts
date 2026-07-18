@@ -23,10 +23,8 @@ export async function getAdministratorRegistrationStatus(): Promise<Administrato
     }
     return { canRegister: true };
   } catch (err) {
-    console.error(
-      "[getAdministratorRegistrationStatus]",
-      err instanceof Error ? err.message : err,
-    );
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[getAdministratorRegistrationStatus]", message);
     // If service role is broken, still allow opening setup so the user sees a clear error.
     return { canRegister: true };
   }

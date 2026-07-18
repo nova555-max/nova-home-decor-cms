@@ -9,13 +9,15 @@
   ],
   // Keep dashboard Secrets across deploys (do not wipe remote encrypted secrets).
   "keep_vars": true,
-  // Public runtime config — safe to commit. Secrets stay in the Cloudflare dashboard.
+  // Public non-secret runtime config only. Secrets (SERVICE_ROLE, RESEND, GEMINI)
+  // must be set in Cloudflare Dashboard → Variables and Secrets — never commit them.
   "vars": {
     "NEXT_PUBLIC_SUPABASE_URL": "https://nblnwcacdlafvgrxfldv.supabase.co",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_q5BPT1JI_h9D3sZ855X3Iw_OI14rGW",
     "NEXT_PUBLIC_APP_URL": "https://nova-home-decor-cms.novahome756.workers.dev",
     "NEXT_PUBLIC_DEFAULT_LOCALE": "ku",
-    "SUPER_ADMIN_EMAIL": "novahome756@gmail.com"
+    "SUPER_ADMIN_EMAIL": "novahome756@gmail.com",
+    "RESEND_FROM_EMAIL": "Nova Home Decor <onboarding@resend.dev>"
   },
   "assets": {
     "directory": ".open-next/assets",
@@ -30,11 +32,4 @@
   "images": {
     "binding": "IMAGES"
   }
-  // Optional: enable Next.js incremental cache on R2 (create bucket in Cloudflare dashboard first)
-  // "r2_buckets": [
-  //   {
-  //     "binding": "NEXT_INC_CACHE_R2_BUCKET",
-  //     "bucket_name": "nova-home-decor-cache"
-  //   }
-  // ]
 }

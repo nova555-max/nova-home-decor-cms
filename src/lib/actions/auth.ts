@@ -20,6 +20,10 @@ import {
   isResendConfigured,
 } from "@/lib/email/send-password-reset";
 import {
+  getRuntimeEnvSnapshot,
+  logEnvDiagnostics,
+} from "@/lib/env/runtime";
+import {
   getAdminUserByAuthId,
   getAdminUserByEmail,
 } from "@/lib/queries/admin-users";
@@ -30,6 +34,24 @@ type ActionResult = { success: true } | { success: false; error: string };
 
 type ServiceClient = ReturnType<typeof createServiceClient>;
 
+function explainSupabaseAuthError(message: string): string {
+  if (/Invalid API key/i.test(message)) {
+    return (
+      "Invalid API key — NEXT_PUBLIC_SUPABASE_ANON_KEY (or PUBLISHABLE_KEY) is wrong for this project, " +
+      "or NEXT_PUBLIC_SUPABASE_URL points to a different Supabase project. " +
+      "Fix both in Cloudflare Variables and Secrets, then redeploy. Original: " +
+      message
+    );
+  }
+  if (/Invalid login credentials/i.test(message)) {
+    return "Invalid email or password.";
+  }
+  if (/Email not confirmed/i.test(message)) {
+    return "Email is not confirmed in Supabase Auth. Confirm the user in Supabase → Authentication → Users.";
+  }
+  return message;
+}
+
 async function getServiceOrError(): Promise<
   { ok: true; service: ServiceClient } | { ok: false; error: string }
 > {
@@ -38,11 +60,14 @@ async function getServiceOrError(): Promise<
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Service role key missing.";
-    if (message.includes("SUPABASE_SERVICE_ROLE_KEY")) {
+    logEnvDiagnostics("[auth:service]");
+    if (message.includes("SUPABASE_SERVICE_ROLE_KEY") || /service_role/i.test(message)) {
       return {
         ok: false,
         error:
-          "Add SUPABASE_SERVICE_ROLE_KEY to .env.local to enable password reset.",
+          message.includes("SUPABASE_SERVICE_ROLE_KEY")
+            ? message
+            : `SUPABASE_SERVICE_ROLE_KEY problem: ${message}`,
       };
     }
     return { ok: false, error: message };
@@ -52,15 +77,17 @@ async function getServiceOrError(): Promise<
 async function findAuthUserIdByEmail(
   service: ServiceClient,
   email: string,
-): Promise<string | null> {
-  const { data: profile } = await service
+): Promise<{ id: string | null; error?: string }> {
+  const { data: profile, error: profileError } = await service
     .from("admin_users")
     .select("auth_user_id")
     .ilike("email", email)
     .maybeSingle();
 
-  if (profile?.auth_user_id) {
-    return profile.auth_user_id as string;
+  if (profileError) {
+    console.error("[findAuthUserIdByEmail] profile", profileError.message);
+  } else if (profile?.auth_user_id) {
+    return { id: profile.auth_user_id as string };
   }
 
   for (let page = 1; page <= 10; page += 1) {
@@ -70,17 +97,20 @@ async function findAuthUserIdByEmail(
     });
     if (error) {
       console.error("[findAuthUserIdByEmail]", error.message);
-      return null;
+      return {
+        id: null,
+        error: `Auth admin listUsers failed: ${error.message}. Check SUPABASE_SERVICE_ROLE_KEY.`,
+      };
     }
     const users = data?.users ?? [];
     const found = users.find(
       (u) => u.email?.toLowerCase() === email.toLowerCase(),
     );
-    if (found?.id) return found.id;
+    if (found?.id) return { id: found.id };
     if (users.length < 200) break;
   }
 
-  return null;
+  return { id: null };
 }
 
 async function deleteOtpsForEmail(
@@ -112,64 +142,91 @@ export async function signInAsAdmin(
     return { success: true };
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    });
 
-  if (error) {
-    return { success: false, error: error.message };
-  }
+    if (error) {
+      console.error("[signInAsAdmin] auth", error.message);
+      return { success: false, error: explainSupabaseAuthError(error.message) };
+    }
 
-  const authUser = data.user;
-  if (!authUser?.id || !authUser.email) {
-    return { success: false, error: "Invalid login response." };
-  }
+    const authUser = data.user;
+    if (!authUser?.id || !authUser.email) {
+      return { success: false, error: "Invalid login response from Supabase Auth." };
+    }
 
-  let profile = await getAdminUserByAuthId(authUser.id);
+    let profile = await getAdminUserByAuthId(authUser.id);
 
-  if (!profile) {
-    profile = await getAdminUserByEmail(authUser.email);
-    if (profile?.auth_user_id && profile.auth_user_id !== authUser.id) {
+    if (!profile) {
+      profile = await getAdminUserByEmail(authUser.email);
+      if (profile?.auth_user_id && profile.auth_user_id !== authUser.id) {
+        await supabase.auth.signOut();
+        return {
+          success: false,
+          error:
+            "Admin profile auth_user_id does not match this login user. Relink in admin_users or recreate the admin.",
+        };
+      }
+    }
+
+    if (!profile) {
       await supabase.auth.signOut();
-      return { success: false, error: "Account is not linked correctly." };
+      return {
+        success: false,
+        error:
+          "Supabase Auth login succeeded, but no admin_users row exists for this email. Open /admin/setup (first install) or add the profile.",
+      };
     }
-  }
 
-  if (!profile || !profile.is_active) {
-    await supabase.auth.signOut();
-    return {
-      success: false,
-      error: "Access denied. Contact the administrator.",
-    };
-  }
-
-  if (profile.auth_user_id !== authUser.id) {
-    try {
-      const service = createServiceClient();
-      await service
-        .from("admin_users")
-        .update({ auth_user_id: authUser.id })
-        .eq("id", profile.id);
-    } catch {
-      // Service role optional for relinking pre-created editor accounts.
+    if (!profile.is_active) {
+      await supabase.auth.signOut();
+      return {
+        success: false,
+        error: "This admin account is disabled (is_active=false).",
+      };
     }
-  }
 
-  if (profile.email.toLowerCase() !== authUser.email.toLowerCase()) {
-    try {
-      const service = createServiceClient();
-      await service
-        .from("admin_users")
-        .update({ email: authUser.email.toLowerCase() })
-        .eq("id", profile.id);
-    } catch {
-      // Email sync is best-effort after verification.
+    if (profile.auth_user_id !== authUser.id) {
+      try {
+        const service = createServiceClient();
+        await service
+          .from("admin_users")
+          .update({ auth_user_id: authUser.id })
+          .eq("id", profile.id);
+      } catch (err) {
+        console.error(
+          "[signInAsAdmin] relink",
+          err instanceof Error ? err.message : err,
+        );
+      }
     }
-  }
 
-  return { success: true };
+    if (profile.email.toLowerCase() !== authUser.email.toLowerCase()) {
+      try {
+        const service = createServiceClient();
+        await service
+          .from("admin_users")
+          .update({ email: authUser.email.toLowerCase() })
+          .eq("id", profile.id);
+      } catch {
+        // Email sync is best-effort after verification.
+      }
+    }
+
+    return { success: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Login failed.";
+    console.error("[signInAsAdmin]", message);
+    if (/NEXT_PUBLIC_SUPABASE|not configured/i.test(message)) {
+      logEnvDiagnostics("[signInAsAdmin]");
+      return { success: false, error: message };
+    }
+    return { success: false, error: explainSupabaseAuthError(message) };
+  }
 }
 
 export async function signInWithSuperAdmin(
@@ -187,10 +244,21 @@ export async function forgotPassword(email: string): Promise<ActionResult> {
   }
 
   if (!isResendConfigured()) {
+    logEnvDiagnostics("[forgotPassword:resend]");
     return {
       success: false,
-      error: "Email service is not configured (RESEND_API_KEY).",
+      error:
+        "RESEND_API_KEY is missing. Add it under Cloudflare → Variables and Secrets (Secret), then Save/Deploy.",
     };
+  }
+
+  const snap = getRuntimeEnvSnapshot();
+  if (snap.SUPER_ADMIN_EMAIL && normalized === snap.SUPER_ADMIN_EMAIL) {
+    // Explicit path for configured super admin — still require Auth user.
+  } else if (!snap.SUPER_ADMIN_EMAIL) {
+    console.warn(
+      "[forgotPassword] SUPER_ADMIN_EMAIL is not set; only active admin_users rows can reset.",
+    );
   }
 
   const serviceResult = await getServiceOrError();
@@ -208,30 +276,45 @@ export async function forgotPassword(email: string): Promise<ActionResult> {
 
   if (profileError) {
     console.error("[forgotPassword] admin lookup", profileError.message);
+    if (/Invalid API key/i.test(profileError.message)) {
+      return {
+        success: false,
+        error:
+          "Could not verify admin account: Invalid API key from Supabase. " +
+          "SUPABASE_SERVICE_ROLE_KEY is wrong or does not match NEXT_PUBLIC_SUPABASE_URL. " +
+          `Details: ${profileError.message}`,
+      };
+    }
     return {
       success: false,
-      error: `Could not verify admin account (${profileError.message}). Check SUPABASE_SERVICE_ROLE_KEY.`,
+      error: `Could not verify admin account: ${profileError.message}. Check SUPABASE_SERVICE_ROLE_KEY.`,
     };
   }
 
   const isSuperAdminEmail =
-    !!env.SUPER_ADMIN_EMAIL &&
-    normalized === env.SUPER_ADMIN_EMAIL.toLowerCase();
+    !!snap.SUPER_ADMIN_EMAIL && normalized === snap.SUPER_ADMIN_EMAIL;
 
   if (!isSuperAdminEmail && !profile?.is_active) {
     return {
       success: false,
       error:
-        "Email not found. Create the first admin at /admin/setup, or use a registered admin email.",
+        `No active admin_users row for ${normalized}. ` +
+        (snap.SUPER_ADMIN_EMAIL
+          ? `Expected SUPER_ADMIN_EMAIL=${snap.SUPER_ADMIN_EMAIL}, or another registered admin.`
+          : "Set SUPER_ADMIN_EMAIL or create the first admin at /admin/setup."),
     };
   }
 
-  const authUserId = await findAuthUserIdByEmail(service, normalized);
-  if (!authUserId) {
+  const authLookup = await findAuthUserIdByEmail(service, normalized);
+  if (authLookup.error) {
+    return { success: false, error: authLookup.error };
+  }
+  if (!authLookup.id) {
     return {
       success: false,
       error:
-        "Email not found in login users. Create the admin at /admin/setup first.",
+        `SUPER_ADMIN / admin email ${normalized} is not in Supabase Auth users. ` +
+        "Create the user via /admin/setup or Supabase → Authentication → Users, then retry forgot password.",
     };
   }
 
@@ -271,7 +354,10 @@ export async function forgotPassword(email: string): Promise<ActionResult> {
 
   if (insertError) {
     console.error("[forgotPassword] insert otp", insertError.message);
-    return { success: false, error: "Could not create verification code." };
+    return {
+      success: false,
+      error: `Could not create verification code in password_reset_otps: ${insertError.message}`,
+    };
   }
 
   const sent = await sendPasswordOtpEmail({ to: normalized, otp });
@@ -280,7 +366,7 @@ export async function forgotPassword(email: string): Promise<ActionResult> {
     await deleteOtpsForEmail(service, normalized);
     return {
       success: false,
-      error: "Could not send verification code. Please try again.",
+      error: `Resend failed: ${sent.error}`,
     };
   }
 
@@ -300,7 +386,7 @@ export async function resetPasswordWithOtp(
   }
 
   if (!isValidOtpFormat(code)) {
-    return { success: false, error: "Invalid code." };
+    return { success: false, error: "Invalid code format (expected 6 digits)." };
   }
 
   if (!password || password.length < 8) {
@@ -326,39 +412,51 @@ export async function resetPasswordWithOtp(
 
   if (lookupError) {
     console.error("[resetPasswordWithOtp] lookup", lookupError.message);
-    return { success: false, error: "Could not verify code." };
+    return {
+      success: false,
+      error: `Could not verify code: ${lookupError.message}`,
+    };
   }
 
   if (!row) {
-    return { success: false, error: "Invalid code." };
+    return { success: false, error: "Invalid or unknown verification code." };
   }
 
   const expiresAt = new Date(row.expires_at as string).getTime();
   if (Number.isNaN(expiresAt) || Date.now() > expiresAt) {
     await deleteOtpsForEmail(service, normalized);
-    return { success: false, error: "Expired code." };
+    return { success: false, error: "Expired verification code. Request a new one." };
   }
 
   const expectedHash = row.code_hash as string;
   const providedHash = hashOtpCode(code, normalized);
   if (!otpHashesMatch(expectedHash, providedHash)) {
-    return { success: false, error: "Invalid code." };
+    return { success: false, error: "Invalid verification code." };
   }
 
-  const authUserId = await findAuthUserIdByEmail(service, normalized);
-  if (!authUserId) {
+  const authLookup = await findAuthUserIdByEmail(service, normalized);
+  if (authLookup.error) {
+    return { success: false, error: authLookup.error };
+  }
+  if (!authLookup.id) {
     await deleteOtpsForEmail(service, normalized);
-    return { success: false, error: "Email not found." };
+    return {
+      success: false,
+      error: `Email ${normalized} was not found in Supabase Auth users.`,
+    };
   }
 
   const { error: updateError } = await service.auth.admin.updateUserById(
-    authUserId,
+    authLookup.id,
     { password },
   );
 
   if (updateError) {
     console.error("[resetPasswordWithOtp] updateUser", updateError.message);
-    return { success: false, error: "Could not update password." };
+    return {
+      success: false,
+      error: `Could not update password via Auth admin API: ${updateError.message}`,
+    };
   }
 
   await deleteOtpsForEmail(service, normalized);

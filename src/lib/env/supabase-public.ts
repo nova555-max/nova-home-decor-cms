@@ -1,3 +1,9 @@
+import {
+  formatMissingEnvError,
+  getRuntimeEnvSnapshot,
+  logEnvDiagnostics,
+} from "@/lib/env/runtime";
+
 /** Strip accidental REST path suffixes from dashboard copy-paste. */
 function normalizeSupabaseUrl(raw: string): string {
   return raw
@@ -36,12 +42,49 @@ export function requireSupabasePublicEnv(): {
   url: string;
   anonKey: string;
 } {
-  const url = getSupabaseUrl();
-  const anonKey = getSupabaseAnonKey();
+  const snap = getRuntimeEnvSnapshot();
+  const url = snap.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = snap.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!url || !anonKey) {
+    logEnvDiagnostics("[supabase-public]");
     throw new Error(
-      "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY (or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY). On Cloudflare Workers Builds, add them under Settings → Builds → Build variables and secrets.",
+      formatMissingEnvError(
+        [
+          !url
+            ? {
+                name: "NEXT_PUBLIC_SUPABASE_URL",
+                status: "missing" as const,
+                detail:
+                  "Missing. Set NEXT_PUBLIC_SUPABASE_URL in Cloudflare Variables (and Build variables).",
+                required: true,
+                secret: false,
+              }
+            : {
+                name: "NEXT_PUBLIC_SUPABASE_URL",
+                status: "ok" as const,
+                detail: url,
+                required: true,
+                secret: false,
+              },
+          !anonKey
+            ? {
+                name: "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+                status: "missing" as const,
+                detail:
+                  "Missing. Set NEXT_PUBLIC_SUPABASE_ANON_KEY (or PUBLISHABLE_KEY).",
+                required: true,
+                secret: false,
+              }
+            : {
+                name: "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+                status: "ok" as const,
+                detail: "Present",
+                required: true,
+                secret: false,
+              },
+        ].filter((c) => c.status !== "ok"),
+      ),
     );
   }
 

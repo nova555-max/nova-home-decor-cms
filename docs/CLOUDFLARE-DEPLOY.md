@@ -141,13 +141,18 @@ For improved ISR/cache performance:
 
 ### 7. Post-Deploy Verification
 
+- [ ] `GET /api/health` returns `"ok": true` (checks Supabase, service role, Resend, Gemini, admin)
 - [ ] Public homepage loads (ku / ar / en)
 - [ ] Admin login via Supabase
+- [ ] Forgot password OTP email via Resend
 - [ ] CMS save/publish (server actions)
 - [ ] Media upload to Supabase Storage
 - [ ] AI chat streaming (`/api/ai/chat`)
 - [ ] `/sitemap.xml` and `/robots.txt`
 - [ ] `DEV_AUTH_ENABLED` is unset/false
+
+**Required runtime Secrets** (never commit): `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `GEMINI_API_KEY`  
+**Required runtime/public vars:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_APP_URL`, `SUPER_ADMIN_EMAIL`, `RESEND_FROM_EMAIL`
 
 ### 8. Local Cloudflare Preview
 
