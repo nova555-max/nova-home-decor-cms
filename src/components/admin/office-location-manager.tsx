@@ -124,6 +124,11 @@ export function OfficeLocationManager({ initial }: OfficeLocationManagerProps) {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFirstRender = useRef(true);
   const isSavingRef = useRef(false);
+  const failedPayloadKey = useRef<string | null>(null);
+  const nameRef = useRef(name);
+  const mapRef = useRef(mapValue);
+  nameRef.current = name;
+  mapRef.current = mapValue;
 
   const isBusy = isSaving || isLocked;
   const subtitle = formatOfficePublicSubtitle({
@@ -137,10 +142,33 @@ export function OfficeLocationManager({ initial }: OfficeLocationManagerProps) {
     return !mapValuesEqual(mapValue, toMapValue(savedOffice), name, savedOffice.name);
   }, [mapValue, name, savedOffice]);
 
+  const payloadKey = useCallback((nextName: string, nextMap: OfficeMapValue) => {
+    return JSON.stringify({
+      name: nextName.trim(),
+      latitude: nextMap.latitude,
+      longitude: nextMap.longitude,
+      country: nextMap.country,
+      city: nextMap.city,
+      district: nextMap.district,
+      street: nextMap.street,
+    });
+  }, []);
+
   const persist = useCallback(
     async (nextName: string, nextMap: OfficeMapValue, showToast = false) => {
+      const trimmedName = nextName.trim();
+      if (!trimmedName) {
+        if (showToast) toast.error(t("office_location.name_required"));
+        return;
+      }
       if (nextMap.latitude == null || nextMap.longitude == null) {
         if (showToast) toast.error(t("office_location.location_required"));
+        return;
+      }
+
+      const key = payloadKey(trimmedName, nextMap);
+      if (!showToast && failedPayloadKey.current === key) {
+        // Do not spam the same failing autosave payload (keeps button spinning).
         return;
       }
 
@@ -152,7 +180,8 @@ export function OfficeLocationManager({ initial }: OfficeLocationManagerProps) {
         try {
           const result = await withActionTimeout(
             saveOfficeLocation({
-              name: nextName,
+              name: trimmedName,
+              officeName: trimmedName,
               latitude: nextMap.latitude as number,
               longitude: nextMap.longitude as number,
               country: nextMap.country,
@@ -165,6 +194,7 @@ export function OfficeLocationManager({ initial }: OfficeLocationManagerProps) {
           );
 
           if (result.success && result.data) {
+            failedPayloadKey.current = null;
             applySavedOffice(result.data, setName, setMapValue, setSavedOffice);
             setAutoSaveState("saved");
             if (showToast) toast.success(t("common.saved"));
@@ -173,16 +203,19 @@ export function OfficeLocationManager({ initial }: OfficeLocationManagerProps) {
             return;
           }
 
+          failedPayloadKey.current = key;
           const errorMessage =
             result.success === false
               ? result.error
               : "Could not save office location.";
           setAutoSaveState("idle");
-          toast.error(errorMessage);
+          if (showToast) toast.error(errorMessage);
+          else toast.error(errorMessage);
           if (process.env.NODE_ENV === "development") {
             console.error("[office-location:save]", errorMessage, result);
           }
         } catch (error) {
+          failedPayloadKey.current = key;
           setAutoSaveState("idle");
           const message =
             error instanceof ActionTimeoutError
@@ -204,17 +237,20 @@ export function OfficeLocationManager({ initial }: OfficeLocationManagerProps) {
         toast.message(t("common.please_wait"));
       }
     },
-    [runLocked, router, t],
+    [payloadKey, runLocked, router, t],
   );
 
   const scheduleAutoSave = useCallback(
     (nextName: string, nextMap: OfficeMapValue) => {
+      if (!nextName.trim()) return;
+      if (nextMap.latitude == null || nextMap.longitude == null) return;
+      if (failedPayloadKey.current === payloadKey(nextName, nextMap)) return;
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(() => {
-        void persist(nextName, nextMap, false);
-      }, 700);
+        void persist(nameRef.current, mapRef.current, false);
+      }, 900);
     },
-    [persist],
+    [payloadKey, persist],
   );
 
   useEffect(() => {
@@ -235,7 +271,8 @@ export function OfficeLocationManager({ initial }: OfficeLocationManagerProps) {
 
   const handleManualSave = () => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    void persist(name, mapValue, true);
+    failedPayloadKey.current = null;
+    void persist(nameRef.current, mapRef.current, true);
   };
 
   return (

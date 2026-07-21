@@ -22,7 +22,10 @@ export type OfficeLocation = {
 };
 
 export type OfficeLocationPayload = {
-  name: string;
+  /** Preferred display name for the office. */
+  name?: string;
+  /** Alias — some runtimes were dropping a lone `name` field on the wire. */
+  officeName?: string;
   latitude: number;
   longitude: number;
   country?: string | null;

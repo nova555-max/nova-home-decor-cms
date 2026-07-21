@@ -104,8 +104,9 @@ export async function saveOfficeLocation(
 ): Promise<ActionResult<OfficeLocation>> {
   try {
     await requirePermission("settings");
+    const resolvedName = String(input.officeName ?? input.name ?? "").trim();
     logDev("start", {
-      name: input.name,
+      name: resolvedName,
       latitude: input.latitude,
       longitude: input.longitude,
     });
@@ -116,7 +117,7 @@ export async function saveOfficeLocation(
     }
 
     const validationError = validateOfficeLocation({
-      name: input.name,
+      name: resolvedName,
       latitude: input.latitude,
       longitude: input.longitude,
     });
@@ -127,7 +128,7 @@ export async function saveOfficeLocation(
 
     const row: OfficeLocation = {
       id: crypto.randomUUID(),
-      name: input.name.trim(),
+      name: resolvedName,
       latitude: input.latitude,
       longitude: input.longitude,
       country: input.country ?? null,

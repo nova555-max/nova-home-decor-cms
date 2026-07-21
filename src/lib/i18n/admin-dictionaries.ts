@@ -491,6 +491,7 @@ const ku = {
     public_label: "ناونیشانی ئۆفیس",
     last_saved: "دوایین پاشەکەوت",
     location_required: "تکایە شوێنێک لەسەر نەخشە دیاری بکە.",
+    name_required: "ناوی ناونیشانی ئۆفیس بنووسە.",
   },
   section_visibility: {
     title: "بەڕێوەبردنی دیاریکردنی بەشەکان",
@@ -1149,6 +1150,7 @@ const ar = {
     public_label: "عنوان المكتب",
     last_saved: "آخر حفظ",
     location_required: "يرجى تحديد موقع على الخريطة.",
+    name_required: "أدخل اسم عنوان المكتب.",
   },
   section_visibility: {
     title: "مدير ظهور الأقسام",
@@ -1807,6 +1809,7 @@ const en = {
     public_label: "Office Address",
     last_saved: "Last saved",
     location_required: "Please select a location on the map.",
+    name_required: "Enter the office address name.",
   },
   section_visibility: {
     title: "Section Visibility Manager",
