@@ -1,6 +1,6 @@
 /**
  * Public (non-secret) defaults for the active Supabase project.
- * Used when Cloudflare Build/Runtime env vars are missing so the client bundle
+ * Used when host Build/Runtime env vars are missing so the client bundle
  * does not crash with empty NEXT_PUBLIC_* values.
  *
  * Anon / publishable keys are safe to embed — they are public by design (RLS protects data).
@@ -10,8 +10,8 @@ export const PUBLIC_ENV_DEFAULTS = {
   NEXT_PUBLIC_SUPABASE_URL: "https://pdmsbboxhfpexklkqvqr.supabase.co",
   NEXT_PUBLIC_SUPABASE_ANON_KEY:
     "sb_publishable_oj0uEtmgE0STtXKeGYcQtA_EOWiu02-",
-  NEXT_PUBLIC_APP_URL:
-    "https://nova-home-decor-cms.novahome756.workers.dev",
+  // Prefer setting NEXT_PUBLIC_APP_URL in Netlify UI to your real *.netlify.app URL.
+  NEXT_PUBLIC_APP_URL: "http://localhost:3000",
   NEXT_PUBLIC_DEFAULT_LOCALE: "ku" as const,
   SUPER_ADMIN_EMAIL: "novahome756@gmail.com",
   RESEND_FROM_EMAIL: "Nova Home Decor <onboarding@resend.dev>",
@@ -30,7 +30,11 @@ export function readPublicEnvFromProcess() {
     NEXT_PUBLIC_SUPABASE_ANON_KEY:
       clean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) ||
       clean(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY),
-    NEXT_PUBLIC_APP_URL: clean(process.env.NEXT_PUBLIC_APP_URL),
+    // Netlify provides URL / DEPLOY_PRIME_URL at build time.
+    NEXT_PUBLIC_APP_URL:
+      clean(process.env.NEXT_PUBLIC_APP_URL) ||
+      clean(process.env.URL) ||
+      clean(process.env.DEPLOY_PRIME_URL),
     NEXT_PUBLIC_DEFAULT_LOCALE:
       clean(process.env.NEXT_PUBLIC_DEFAULT_LOCALE) ||
       PUBLIC_ENV_DEFAULTS.NEXT_PUBLIC_DEFAULT_LOCALE,

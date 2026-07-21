@@ -10,7 +10,7 @@
     "dev:turbopack": "next dev --turbopack -p 3000",
     "dev:webpack": "next dev -p 3000",
     "dev:restart": "node scripts/restart-dev.mjs",
-    "build": "opennextjs-cloudflare build",
+    "build": "next build",
     "build:next": "next build",
     "build:docker": "next build",
     "build:turbopack": "next build --turbopack",

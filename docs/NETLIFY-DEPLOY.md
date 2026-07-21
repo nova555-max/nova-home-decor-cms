@@ -1,8 +1,8 @@
-# Netlify deployment (Nova Home Decor CMS)
+# Netlify deployment (primary)
 
 **Build command:** `npm run build` (= `next build`)  
 **Publish directory:** leave blank (owned by `@netlify/plugin-nextjs`)  
-**Node:** 20
+**Node:** 20  
 
 ## 1. Connect the repo
 
@@ -13,44 +13,46 @@ Netlify → Add new site → Import from Git → `nova555-max/nova-home-decor-cm
 Site configuration → Environment variables  
 Enable for **Builds** and **Functions** (Production + Deploy Previews).
 
-### Public
+### Public (also prefilled in `netlify.toml` for Builds)
 
 | Name | Value |
 |------|--------|
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://pdmsbboxhfpexklkqvqr.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | anon JWT or `sb_publishable_…` for **same** project |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `sb_publishable_oj0uEtmgE0STtXKeGYcQtA_EOWiu02-` |
 | `NEXT_PUBLIC_APP_URL` | your Netlify URL e.g. `https://YOUR-SITE.netlify.app` |
 | `NEXT_PUBLIC_DEFAULT_LOCALE` | `ku` |
 | `SUPER_ADMIN_EMAIL` | `novahome756@gmail.com` |
 | `RESEND_FROM_EMAIL` | `Nova Home Decor <onboarding@resend.dev>` |
 
-### Secrets
+### Secrets (Netlify UI only — never commit)
 
 | Name | Notes |
 |------|--------|
-| `SUPABASE_SERVICE_ROLE_KEY` | JWT with `role=service_role` for **same** project as URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | JWT `role=service_role` for project `pdmsbboxhfpexklkqvqr` |
 | `RESEND_API_KEY` | `re_…` |
-| `GEMINI_API_KEY` | optional for AI |
+| `GEMINI_API_KEY` | optional for AI chat |
 
-Do **not** mix keys from older projects with `pdmsbboxhfpexklkqvqr`.
+Do **not** mix keys from older Supabase projects.
 
 ## 3. Supabase Auth redirect
 
 Supabase → Authentication → URL configuration:
 
 ```
+https://YOUR-SITE.netlify.app/**
 https://YOUR-SITE.netlify.app/auth/callback
 ```
 
-Also add the Site URL.
+Site URL: `https://YOUR-SITE.netlify.app`
 
 ## 4. After deploy
 
-1. Open `/api/health` — `supabase`, `serviceRole`, `resend`, `admin` should be ok  
-2. Login: `novahome756@gmail.com` / your admin password  
-3. Test forgot-password OTP email  
+1. Open `https://YOUR-SITE.netlify.app/api/health`
+2. Create admin if needed: `/admin/setup`
+3. Login: `novahome756@gmail.com`
+4. Test forgot-password
 
 ## Notes
 
-- Cloudflare scripts remain as `npm run build:cloudflare` / `deploy:cloudflare` if needed later.  
-- Never set `DEV_AUTH_ENABLED` on Netlify production.
+- Cloudflare remains optional via `npm run build:cloudflare` / `deploy:cloudflare`
+- Never set `DEV_AUTH_ENABLED` on Netlify production

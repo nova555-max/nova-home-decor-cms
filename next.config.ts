@@ -39,7 +39,12 @@ function serverActionOrigins(): string[] {
     addAllowedOrigin(origins, host);
   }
 
+  // Netlify site / deploy preview URLs (injected at build).
   addAllowedOrigin(origins, publicEnv.NEXT_PUBLIC_APP_URL);
+  addAllowedOrigin(origins, process.env.URL ?? "");
+  addAllowedOrigin(origins, process.env.DEPLOY_PRIME_URL ?? "");
+  addAllowedOrigin(origins, process.env.DEPLOY_URL ?? "");
+
   return [...origins];
 }
 

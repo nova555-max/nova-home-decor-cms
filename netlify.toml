@@ -1,7 +1,7 @@
-# Netlify — Next.js via @netlify/plugin-nextjs
+# Netlify — primary host for Nova Home Decor CMS
 # Site settings:
-#   Build command: npm run build   (next build)
-#   Publish directory: leave blank (plugin owns output)
+#   Build command: npm run build  (= next build)
+#   Publish directory: leave blank (@netlify/plugin-nextjs owns output)
 #   Node version: 20
 # Do NOT set DEV_AUTH_ENABLED in production.
 
@@ -11,10 +11,19 @@
 [build.environment]
   NODE_VERSION = "20"
   NEXT_TELEMETRY_DISABLED = "1"
-  # Public fallbacks (override in Netlify UI for production URL):
-  # NEXT_PUBLIC_SUPABASE_URL / ANON_KEY / APP_URL / SUPER_ADMIN_EMAIL
-  # Secrets (Site settings → Environment variables, scopes: Builds + Functions):
-  # SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY, RESEND_FROM_EMAIL, GEMINI_API_KEY
+  # Public defaults (override NEXT_PUBLIC_APP_URL in Netlify UI to your real site URL)
+  NEXT_PUBLIC_SUPABASE_URL = "https://pdmsbboxhfpexklkqvqr.supabase.co"
+  NEXT_PUBLIC_SUPABASE_ANON_KEY = "sb_publishable_oj0uEtmgE0STtXKeGYcQtA_EOWiu02-"
+  NEXT_PUBLIC_DEFAULT_LOCALE = "ku"
+  SUPER_ADMIN_EMAIL = "novahome756@gmail.com"
+  RESEND_FROM_EMAIL = "Nova Home Decor <onboarding@resend.dev>"
+
+# Secrets — set only in Netlify UI (Site configuration → Environment variables):
+#   SUPABASE_SERVICE_ROLE_KEY
+#   RESEND_API_KEY
+#   GEMINI_API_KEY
+#   NEXT_PUBLIC_APP_URL=https://YOUR-SITE.netlify.app
+# Scopes: Builds + Functions (Production + Deploy Previews)
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
