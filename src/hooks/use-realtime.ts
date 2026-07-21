@@ -4,12 +4,13 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
+import { hasSupabasePublicEnv } from "@/lib/env/supabase-public";
 
 export function useRealtimeSync() {
   const router = useRouter();
 
   useEffect(() => {
-    if (process.env.NODE_ENV === "development") {
+    if (process.env.NODE_ENV === "development" || !hasSupabasePublicEnv()) {
       return;
     }
 

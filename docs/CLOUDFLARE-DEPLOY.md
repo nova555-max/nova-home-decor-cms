@@ -141,6 +141,26 @@ For improved ISR/cache performance:
 
 ### 7. Post-Deploy Verification
 
+`GET /api/health` returns:
+
+```json
+{
+  "ok": true,
+  "environment": "OK",
+  "supabase": "OK",
+  "database": "OK",
+  "auth": "OK",
+  "resend": "OK",
+  "gemini": "OK",
+  "cloudflare": "OK",
+  "storage": "OK",
+  "admin": "OK",
+  "details": { "...": "per-check diagnostics" }
+}
+```
+
+**Active Supabase project ref:** `pdmsbboxhfpexklkqvqr` → `https://pdmsbboxhfpexklkqvqr.supabase.co`
+
 - [ ] `GET /api/health` returns `"ok": true` (checks Supabase, service role, Resend, Gemini, admin)
 - [ ] Public homepage loads (ku / ar / en)
 - [ ] Admin login via Supabase

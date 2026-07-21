@@ -1,0 +1,61 @@
+/**
+ * Public (non-secret) defaults for the active Supabase project.
+ * Used when Cloudflare Build/Runtime env vars are missing so the client bundle
+ * does not crash with empty NEXT_PUBLIC_* values.
+ *
+ * Anon / publishable keys are safe to embed — they are public by design (RLS protects data).
+ * Never put SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY, or GEMINI_API_KEY here.
+ */
+export const PUBLIC_ENV_DEFAULTS = {
+  NEXT_PUBLIC_SUPABASE_URL: "https://pdmsbboxhfpexklkqvqr.supabase.co",
+  NEXT_PUBLIC_SUPABASE_ANON_KEY:
+    "sb_publishable_oj0uEtmgE0STtXKeGYcQtA_EOWiu02-",
+  NEXT_PUBLIC_APP_URL:
+    "https://nova-home-decor-cms.novahome756.workers.dev",
+  NEXT_PUBLIC_DEFAULT_LOCALE: "ku" as const,
+  SUPER_ADMIN_EMAIL: "novahome756@gmail.com",
+  RESEND_FROM_EMAIL: "Nova Home Decor <onboarding@resend.dev>",
+} as const;
+
+function clean(value: string | undefined): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+/** Direct property access so Next.js inlines NEXT_PUBLIC_* in client bundles. */
+export function readPublicEnvFromProcess() {
+  return {
+    NEXT_PUBLIC_SUPABASE_URL: clean(process.env.NEXT_PUBLIC_SUPABASE_URL),
+    NEXT_PUBLIC_SUPABASE_ANON_KEY:
+      clean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) ||
+      clean(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY),
+    NEXT_PUBLIC_APP_URL: clean(process.env.NEXT_PUBLIC_APP_URL),
+    NEXT_PUBLIC_DEFAULT_LOCALE:
+      clean(process.env.NEXT_PUBLIC_DEFAULT_LOCALE) ||
+      PUBLIC_ENV_DEFAULTS.NEXT_PUBLIC_DEFAULT_LOCALE,
+    SUPER_ADMIN_EMAIL: clean(process.env.SUPER_ADMIN_EMAIL),
+    RESEND_FROM_EMAIL: clean(process.env.RESEND_FROM_EMAIL),
+  };
+}
+
+export function resolvePublicEnvWithDefaults() {
+  const raw = readPublicEnvFromProcess();
+  return {
+    NEXT_PUBLIC_SUPABASE_URL:
+      raw.NEXT_PUBLIC_SUPABASE_URL ||
+      PUBLIC_ENV_DEFAULTS.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY:
+      raw.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+      PUBLIC_ENV_DEFAULTS.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    NEXT_PUBLIC_APP_URL:
+      raw.NEXT_PUBLIC_APP_URL || PUBLIC_ENV_DEFAULTS.NEXT_PUBLIC_APP_URL,
+    NEXT_PUBLIC_DEFAULT_LOCALE:
+      raw.NEXT_PUBLIC_DEFAULT_LOCALE ||
+      PUBLIC_ENV_DEFAULTS.NEXT_PUBLIC_DEFAULT_LOCALE,
+    SUPER_ADMIN_EMAIL:
+      raw.SUPER_ADMIN_EMAIL || PUBLIC_ENV_DEFAULTS.SUPER_ADMIN_EMAIL,
+    RESEND_FROM_EMAIL:
+      raw.RESEND_FROM_EMAIL || PUBLIC_ENV_DEFAULTS.RESEND_FROM_EMAIL,
+  };
+}

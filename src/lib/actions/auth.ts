@@ -24,6 +24,10 @@ import {
   logEnvDiagnostics,
 } from "@/lib/env/runtime";
 import {
+  formatSupabaseOperationError,
+  getSupabaseKeyMismatchDetail,
+} from "@/lib/env/supabase-errors";
+import {
   getAdminUserByAuthId,
   getAdminUserByEmail,
 } from "@/lib/queries/admin-users";
@@ -99,7 +103,10 @@ async function findAuthUserIdByEmail(
       console.error("[findAuthUserIdByEmail]", error.message);
       return {
         id: null,
-        error: `Auth admin listUsers failed: ${error.message}. Check SUPABASE_SERVICE_ROLE_KEY.`,
+        error: formatSupabaseOperationError(
+          "Auth admin listUsers",
+          error.message,
+        ),
       };
     }
     const users = data?.users ?? [];
@@ -276,18 +283,16 @@ export async function forgotPassword(email: string): Promise<ActionResult> {
 
   if (profileError) {
     console.error("[forgotPassword] admin lookup", profileError.message);
-    if (/Invalid API key/i.test(profileError.message)) {
-      return {
-        success: false,
-        error:
-          "Could not verify admin account: Invalid API key from Supabase. " +
-          "SUPABASE_SERVICE_ROLE_KEY is wrong or does not match NEXT_PUBLIC_SUPABASE_URL. " +
-          `Details: ${profileError.message}`,
-      };
+    const mismatch = getSupabaseKeyMismatchDetail();
+    if (mismatch) {
+      return { success: false, error: mismatch };
     }
     return {
       success: false,
-      error: `Could not verify admin account: ${profileError.message}. Check SUPABASE_SERVICE_ROLE_KEY.`,
+      error: formatSupabaseOperationError(
+        "Could not verify admin account",
+        profileError.message,
+      ),
     };
   }
 

@@ -1,5 +1,8 @@
-# Netlify — Next.js (OpenNext runtime via @netlify/plugin-nextjs)
-# Leave Publish directory blank in the Netlify UI if asked; the plugin owns output.
+# Netlify — Next.js via @netlify/plugin-nextjs
+# Site settings:
+#   Build command: npm run build   (next build)
+#   Publish directory: leave blank (plugin owns output)
+#   Node version: 20
 # Do NOT set DEV_AUTH_ENABLED in production.
 
 [build]
@@ -8,6 +11,10 @@
 [build.environment]
   NODE_VERSION = "20"
   NEXT_TELEMETRY_DISABLED = "1"
+  # Public fallbacks (override in Netlify UI for production URL):
+  # NEXT_PUBLIC_SUPABASE_URL / ANON_KEY / APP_URL / SUPER_ADMIN_EMAIL
+  # Secrets (Site settings → Environment variables, scopes: Builds + Functions):
+  # SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY, RESEND_FROM_EMAIL, GEMINI_API_KEY
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"

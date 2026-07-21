@@ -36,13 +36,24 @@ function createEnv() {
   });
 
   if (!parsed.success) {
-    console.error(
-      "Invalid environment variables:",
-      parsed.error.flatten().fieldErrors,
-    );
-    throw new Error(
-      "Invalid environment variables. Check NEXT_PUBLIC_APP_URL and other app settings.",
-    );
+    const fieldErrors = parsed.error.flatten().fieldErrors;
+    console.error("[env] Invalid environment variables:", fieldErrors);
+
+    // Never crash the app at import time — use safe defaults and log.
+    return {
+      NEXT_PUBLIC_APP_URL:
+        process.env.NEXT_PUBLIC_APP_URL?.trim() || "http://localhost:3000",
+      NEXT_PUBLIC_DEFAULT_LOCALE:
+        (process.env.NEXT_PUBLIC_DEFAULT_LOCALE?.trim() as
+          | "ku"
+          | "ar"
+          | "en"
+          | undefined) || "ku",
+      NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:
+        process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() || undefined,
+      SUPER_ADMIN_EMAIL:
+        process.env.SUPER_ADMIN_EMAIL?.trim().toLowerCase() || undefined,
+    };
   }
 
   return parsed.data;

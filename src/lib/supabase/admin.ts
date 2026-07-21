@@ -6,6 +6,7 @@ import {
   decodeJwtPayload,
   formatMissingEnvError,
   logEnvDiagnostics,
+  resolveSupabaseUrlFromKey,
 } from "@/lib/env/runtime";
 
 export function getServiceRoleKey(): string | null {
@@ -52,7 +53,11 @@ export function createServiceClient(): SupabaseClient {
     throw new Error(validated.error);
   }
 
-  const { url } = requireSupabasePublicEnv();
+  const { url: envUrl } = requireSupabasePublicEnv();
+  const url =
+    resolveSupabaseUrlFromKey(undefined, serviceRoleKey) ||
+    resolveSupabaseUrlFromKey(envUrl, serviceRoleKey) ||
+    envUrl;
 
   return createClient(url, serviceRoleKey, {
     auth: {

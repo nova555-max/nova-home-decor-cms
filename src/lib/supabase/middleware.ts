@@ -2,12 +2,20 @@ import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 import {
-  getSupabaseAnonKey,
-  getSupabaseUrl,
+  getResolvedSupabasePublicEnv,
   hasSupabasePublicEnv,
 } from "@/lib/env/supabase-public";
 
 const SESSION_TIMEOUT_MS = 4000;
+let lastSessionWarnAt = 0;
+const SESSION_WARN_COOLDOWN_MS = 60_000;
+
+function logSessionRefreshIssue(message: string): void {
+  const now = Date.now();
+  if (now - lastSessionWarnAt < SESSION_WARN_COOLDOWN_MS) return;
+  lastSessionWarnAt = now;
+  console.warn("[middleware:session]", message);
+}
 
 async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -44,9 +52,14 @@ export async function updateSession(request: NextRequest) {
   }
 
   try {
+    const resolved = getResolvedSupabasePublicEnv();
+    if (!resolved) {
+      return supabaseResponse;
+    }
+
     const supabase = createServerClient(
-      getSupabaseUrl()!,
-      getSupabaseAnonKey()!,
+      resolved.url,
+      resolved.anonKey,
       {
         cookies: {
           getAll() {
@@ -68,8 +81,10 @@ export async function updateSession(request: NextRequest) {
     );
 
     await withTimeout(supabase.auth.getUser(), SESSION_TIMEOUT_MS);
-  } catch {
-    // Offline, slow, or misconfigured Supabase must not break navigation.
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Supabase session refresh failed";
+    logSessionRefreshIssue(message);
   }
 
   return supabaseResponse;

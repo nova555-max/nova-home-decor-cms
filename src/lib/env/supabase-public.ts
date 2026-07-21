@@ -2,28 +2,34 @@ import {
   formatMissingEnvError,
   getRuntimeEnvSnapshot,
   logEnvDiagnostics,
+  resolveSupabaseUrlFromKey,
 } from "@/lib/env/runtime";
-
-/** Strip accidental REST path suffixes from dashboard copy-paste. */
-function normalizeSupabaseUrl(raw: string): string {
-  return raw
-    .trim()
-    .replace(/\/rest\/v1\/?$/i, "")
-    .replace(/\/+$/, "");
-}
+import { getSupabaseKeyMismatchDetail } from "@/lib/env/supabase-errors";
 
 /** Shared Supabase public env — works in middleware, server, and client bundles. */
 export function getSupabaseUrl(): string | undefined {
-  const raw = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  if (!raw) return undefined;
-  return normalizeSupabaseUrl(raw);
+  return getRuntimeEnvSnapshot().NEXT_PUBLIC_SUPABASE_URL;
 }
 
 export function getSupabaseAnonKey(): string | undefined {
-  return (
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim() ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()
-  );
+  return getRuntimeEnvSnapshot().NEXT_PUBLIC_SUPABASE_ANON_KEY;
+}
+
+/** Resolved URL + anon key for Supabase clients (fixes mistyped env URLs). */
+export function getResolvedSupabasePublicEnv(): {
+  url: string;
+  anonKey: string;
+} | null {
+  const snap = getRuntimeEnvSnapshot();
+  const anonKey = snap.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!anonKey) return null;
+
+  const url =
+    resolveSupabaseUrlFromKey(snap.NEXT_PUBLIC_SUPABASE_URL, anonKey) ||
+    snap.NEXT_PUBLIC_SUPABASE_URL;
+
+  if (!url) return null;
+  return { url, anonKey };
 }
 
 export function hasSupabasePublicEnv(): boolean {
@@ -37,21 +43,19 @@ export function hasSupabasePublicEnv(): boolean {
   );
 }
 
-/** Call before creating Supabase clients — fails with a clear host-env message. */
 export function requireSupabasePublicEnv(): {
   url: string;
   anonKey: string;
 } {
+  const resolved = getResolvedSupabasePublicEnv();
   const snap = getRuntimeEnvSnapshot();
-  const url = snap.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = snap.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  if (!url || !anonKey) {
+  if (!resolved) {
     logEnvDiagnostics("[supabase-public]");
     throw new Error(
       formatMissingEnvError(
         [
-          !url
+          !snap.NEXT_PUBLIC_SUPABASE_URL
             ? {
                 name: "NEXT_PUBLIC_SUPABASE_URL",
                 status: "missing" as const,
@@ -63,11 +67,11 @@ export function requireSupabasePublicEnv(): {
             : {
                 name: "NEXT_PUBLIC_SUPABASE_URL",
                 status: "ok" as const,
-                detail: url,
+                detail: snap.NEXT_PUBLIC_SUPABASE_URL,
                 required: true,
                 secret: false,
               },
-          !anonKey
+          !snap.NEXT_PUBLIC_SUPABASE_ANON_KEY
             ? {
                 name: "NEXT_PUBLIC_SUPABASE_ANON_KEY",
                 status: "missing" as const,
@@ -88,5 +92,10 @@ export function requireSupabasePublicEnv(): {
     );
   }
 
-  return { url, anonKey };
+  const mismatch = getSupabaseKeyMismatchDetail();
+  if (mismatch) {
+    console.error("[supabase-public]", mismatch);
+  }
+
+  return resolved;
 }

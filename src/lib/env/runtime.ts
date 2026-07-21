@@ -3,6 +3,11 @@
  * Never throws at import time — call explicitly from health checks and auth flows.
  */
 
+import {
+  PUBLIC_ENV_DEFAULTS,
+  readPublicEnvFromProcess,
+} from "@/config/public-env-defaults";
+
 export type EnvCheckStatus = "ok" | "missing" | "invalid";
 
 export type EnvCheck = {
@@ -47,6 +52,20 @@ function normalizeSupabaseUrl(raw: string): string {
     .replace(/\/+$/, "");
 }
 
+/** Prefer project ref embedded in a Supabase JWT over a mistyped env URL. */
+export function resolveSupabaseUrlFromKey(
+  fallbackUrl: string | undefined,
+  apiKey: string | undefined,
+): string | undefined {
+  if (apiKey?.startsWith("eyJ")) {
+    const ref = decodeJwtPayload(apiKey)?.ref;
+    if (typeof ref === "string" && /^[a-z0-9]{10,}$/i.test(ref)) {
+      return `https://${ref.toLowerCase()}.supabase.co`;
+    }
+  }
+  return fallbackUrl ? normalizeSupabaseUrl(fallbackUrl) : undefined;
+}
+
 function isLikelySupabaseUrl(url: string): boolean {
   try {
     const u = new URL(url);
@@ -73,25 +92,36 @@ function isLikelyServiceRoleKey(key: string): boolean {
 }
 
 export function getRuntimeEnvSnapshot() {
-  const supabaseUrlRaw = trimEnv("NEXT_PUBLIC_SUPABASE_URL");
-  const supabaseUrl = supabaseUrlRaw
-    ? normalizeSupabaseUrl(supabaseUrlRaw)
-    : undefined;
+  const pub = readPublicEnvFromProcess();
+  const anonKey =
+    pub.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    PUBLIC_ENV_DEFAULTS.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const serviceRoleKey = trimEnv("SUPABASE_SERVICE_ROLE_KEY");
+  const supabaseUrlRaw =
+    pub.NEXT_PUBLIC_SUPABASE_URL ||
+    PUBLIC_ENV_DEFAULTS.NEXT_PUBLIC_SUPABASE_URL;
+  // Prefer JWT project ref (fixes mistyped NEXT_PUBLIC_SUPABASE_URL → CF 1016).
+  const supabaseUrl =
+    resolveSupabaseUrlFromKey(supabaseUrlRaw, serviceRoleKey) ||
+    resolveSupabaseUrlFromKey(supabaseUrlRaw, anonKey) ||
+    supabaseUrlRaw;
 
   return {
     NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY:
-      trimEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY") ||
-      trimEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
-    NEXT_PUBLIC_APP_URL: trimEnv("NEXT_PUBLIC_APP_URL"),
-    NEXT_PUBLIC_DEFAULT_LOCALE: trimEnv("NEXT_PUBLIC_DEFAULT_LOCALE") || "ku",
-    SUPABASE_SERVICE_ROLE_KEY: trimEnv("SUPABASE_SERVICE_ROLE_KEY"),
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: anonKey,
+    NEXT_PUBLIC_APP_URL:
+      pub.NEXT_PUBLIC_APP_URL || PUBLIC_ENV_DEFAULTS.NEXT_PUBLIC_APP_URL,
+    NEXT_PUBLIC_DEFAULT_LOCALE:
+      pub.NEXT_PUBLIC_DEFAULT_LOCALE ||
+      PUBLIC_ENV_DEFAULTS.NEXT_PUBLIC_DEFAULT_LOCALE,
+    SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey,
     RESEND_API_KEY: trimEnv("RESEND_API_KEY"),
     RESEND_FROM_EMAIL:
-      trimEnv("RESEND_FROM_EMAIL") ||
-      "Nova Home Decor <onboarding@resend.dev>",
+      trimEnv("RESEND_FROM_EMAIL") || PUBLIC_ENV_DEFAULTS.RESEND_FROM_EMAIL,
     GEMINI_API_KEY: trimEnv("GEMINI_API_KEY"),
-    SUPER_ADMIN_EMAIL: trimEnv("SUPER_ADMIN_EMAIL")?.toLowerCase(),
+    SUPER_ADMIN_EMAIL: (
+      pub.SUPER_ADMIN_EMAIL || PUBLIC_ENV_DEFAULTS.SUPER_ADMIN_EMAIL
+    ).toLowerCase(),
   };
 }
 
@@ -181,6 +211,92 @@ export function checkRequiredEnv(): EnvCheck[] {
       detail: "Present (service_role JWT)",
       required: true,
       secret: true,
+    });
+  }
+
+  if (snap.SUPABASE_SERVICE_ROLE_KEY?.startsWith("eyJ")) {
+    const serviceRef = decodeJwtPayload(snap.SUPABASE_SERVICE_ROLE_KEY)?.ref;
+    if (typeof serviceRef === "string") {
+      let urlHostRef: string | null = null;
+      try {
+        const host = new URL(snap.NEXT_PUBLIC_SUPABASE_URL ?? "").hostname;
+        const match = host.match(/^([a-z0-9]+)\.supabase\.co$/i);
+        urlHostRef = match?.[1]?.toLowerCase() ?? null;
+      } catch {
+        urlHostRef = null;
+      }
+
+      if (urlHostRef && urlHostRef !== serviceRef.toLowerCase()) {
+        checks.push({
+          name: "SUPABASE_KEY_PROJECT_MATCH",
+          status: "invalid",
+          detail: `NEXT_PUBLIC_SUPABASE_URL host ref="${urlHostRef}" does not match service_role ref="${serviceRef}". Use the same Supabase project.`,
+          required: true,
+          secret: false,
+        });
+      } else if (snap.NEXT_PUBLIC_SUPABASE_ANON_KEY?.startsWith("eyJ")) {
+        const anonRef = decodeJwtPayload(snap.NEXT_PUBLIC_SUPABASE_ANON_KEY)?.ref;
+        if (
+          typeof anonRef === "string" &&
+          anonRef.toLowerCase() !== serviceRef.toLowerCase()
+        ) {
+          checks.push({
+            name: "SUPABASE_KEY_PROJECT_MATCH",
+            status: "invalid",
+            detail: `Anon key project ref="${anonRef}" does not match service_role ref="${serviceRef}". Use keys from the same Supabase project.`,
+            required: true,
+            secret: false,
+          });
+        }
+      }
+    }
+  }
+
+  if (!snap.NEXT_PUBLIC_APP_URL) {
+    checks.push({
+      name: "NEXT_PUBLIC_APP_URL",
+      status: "missing",
+      detail:
+        "Missing. Set to your Cloudflare Workers URL (e.g. https://nova-home-decor-cms.novahome756.workers.dev).",
+      required: true,
+      secret: false,
+    });
+  } else {
+    try {
+      const host = new URL(snap.NEXT_PUBLIC_APP_URL).host;
+      checks.push({
+        name: "NEXT_PUBLIC_APP_URL",
+        status: "ok",
+        detail: host,
+        required: true,
+        secret: false,
+      });
+    } catch {
+      checks.push({
+        name: "NEXT_PUBLIC_APP_URL",
+        status: "invalid",
+        detail: `Invalid URL: ${snap.NEXT_PUBLIC_APP_URL}`,
+        required: true,
+        secret: false,
+      });
+    }
+  }
+
+  if (!snap.RESEND_FROM_EMAIL) {
+    checks.push({
+      name: "RESEND_FROM_EMAIL",
+      status: "missing",
+      detail: 'Missing. Set e.g. "Nova Home Decor <onboarding@resend.dev>".',
+      required: true,
+      secret: false,
+    });
+  } else {
+    checks.push({
+      name: "RESEND_FROM_EMAIL",
+      status: "ok",
+      detail: snap.RESEND_FROM_EMAIL,
+      required: true,
+      secret: false,
     });
   }
 

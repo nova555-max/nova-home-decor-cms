@@ -7,6 +7,7 @@ import {
   getAdminSettings,
   getGlobalSearchItems,
 } from "@/lib/queries/cms";
+import { createServiceClient, getServiceRoleKey } from "@/lib/supabase/admin";
 import { createCmsClient } from "@/lib/supabase/cms-client";
 import type { ActivityItem, DashboardData, SystemStatus } from "@/types/dashboard";
 import type {
@@ -170,7 +171,10 @@ async function checkSystemStatus(): Promise<SystemStatus> {
     };
   }
 
-  const supabase = await createCmsClient();
+  const serviceKey = getServiceRoleKey();
+  const supabase = serviceKey
+    ? createServiceClient()
+    : await (await import("@/lib/supabase/cms-client")).createCmsClient();
   let supabaseConnected = false;
   let databaseHealthy = false;
   let storageConnected = false;
@@ -179,7 +183,14 @@ async function checkSystemStatus(): Promise<SystemStatus> {
     const { error } = await supabase.from("categories").select("id").limit(1);
     supabaseConnected = !error;
     databaseHealthy = !error;
-  } catch {
+    if (error) {
+      console.error("[dashboard:systemStatus] database", error.message);
+    }
+  } catch (err) {
+    console.error(
+      "[dashboard:systemStatus] database",
+      err instanceof Error ? err.message : err,
+    );
     supabaseConnected = false;
     databaseHealthy = false;
   }
@@ -189,7 +200,14 @@ async function checkSystemStatus(): Promise<SystemStatus> {
       limit: 1,
     });
     storageConnected = !error;
-  } catch {
+    if (error) {
+      console.error("[dashboard:systemStatus] storage", error.message);
+    }
+  } catch (err) {
+    console.error(
+      "[dashboard:systemStatus] storage",
+      err instanceof Error ? err.message : err,
+    );
     storageConnected = false;
   }
 

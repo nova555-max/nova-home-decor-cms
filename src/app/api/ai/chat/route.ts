@@ -71,7 +71,10 @@ export async function POST(request: Request) {
   try {
     if (!getGeminiApiKey()) {
       return new Response(
-        JSON.stringify({ error: "AI assistant is temporarily unavailable." }),
+        JSON.stringify({
+          error:
+            "AI assistant is unavailable. Add Secret GEMINI_API_KEY in Cloudflare → Variables and Secrets.",
+        }),
         { status: 503, headers: { "Content-Type": "application/json" } },
       );
     }

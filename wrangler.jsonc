@@ -7,12 +7,16 @@
     "nodejs_compat",
     "global_fetch_strictly_public"
   ],
+  // Prevents "Uncaught ReferenceError: __name is not defined" from next-themes
+  // inline scripts when Wrangler/esbuild keep-names injects __name helpers.
+  // See: https://opennext.js.org/cloudflare/howtos/keep_names
+  "keep_names": false,
   "keep_vars": true,
   // Public config only. Secrets stay in Cloudflare Dashboard (never commit):
   // SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY, GEMINI_API_KEY
   "vars": {
-    "NEXT_PUBLIC_SUPABASE_URL": "https://znsoeketfjnnpirglosq.supabase.co",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpmc29la2V0ZmpubnBpcmdsb3NxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NjI1NjAsImV4cCI6MjA5OTUzODU2MH0.1bpzOD3aOGz88h-C_pPtUopWPcMYW3b2OxR2t-ioc40",
+    "NEXT_PUBLIC_SUPABASE_URL": "https://pdmsbboxhfpexklkqvqr.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_oj0uEtmgE0STtXKeGYcQtA_EOWiu02-",
     "NEXT_PUBLIC_APP_URL": "https://nova-home-decor-cms.novahome756.workers.dev",
     "NEXT_PUBLIC_DEFAULT_LOCALE": "ku",
     "SUPER_ADMIN_EMAIL": "novahome756@gmail.com",

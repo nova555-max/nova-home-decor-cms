@@ -1,8 +1,21 @@
 import { createBrowserClient } from "@supabase/ssr";
 
-import { requireSupabasePublicEnv } from "@/lib/env/supabase-public";
+import {
+  getResolvedSupabasePublicEnv,
+  hasSupabasePublicEnv,
+} from "@/lib/env/supabase-public";
 
 export function createClient() {
-  const { url, anonKey } = requireSupabasePublicEnv();
-  return createBrowserClient(url, anonKey);
+  if (!hasSupabasePublicEnv()) {
+    throw new Error(
+      "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
+    );
+  }
+
+  const resolved = getResolvedSupabasePublicEnv();
+  if (!resolved) {
+    throw new Error("Supabase public env could not be resolved.");
+  }
+
+  return createBrowserClient(resolved.url, resolved.anonKey);
 }

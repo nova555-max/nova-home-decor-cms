@@ -67,7 +67,10 @@ export async function POST(request: Request) {
 
     if (!getGeminiApiKey()) {
       return NextResponse.json(
-        { error: "AI is not configured. Add GEMINI_API_KEY to .env.local." },
+        {
+          error:
+            "AI is not configured. Add Secret GEMINI_API_KEY in Cloudflare → Variables and Secrets.",
+        },
         { status: 503 },
       );
     }
