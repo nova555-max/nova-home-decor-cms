@@ -7,6 +7,14 @@ export function actionErrorMessage(message: string): string {
     lower.includes("permission denied") ||
     lower.includes("jwt")
   ) {
+    const onNetlify =
+      process.env.NETLIFY === "true" || process.env.NODE_ENV === "production";
+    if (onNetlify) {
+      return (
+        message +
+        " Fix: set SUPABASE_SERVICE_ROLE_KEY in Netlify (same project as NEXT_PUBLIC_SUPABASE_URL), enable Builds + Functions, then redeploy."
+      );
+    }
     return message + RLS_DEV_HINT;
   }
   return message;
