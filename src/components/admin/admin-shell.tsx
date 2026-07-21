@@ -16,6 +16,7 @@ import type { AppTheme } from "@/lib/theme/config";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { AdminAiAssistant } from "@/components/admin/admin-ai-assistant";
 import { ThemePreferenceSync } from "@/components/providers/theme-preference-sync";
+import { RealtimeSync } from "@/hooks/use-realtime";
 import {
   Sidebar,
   SidebarContent,
@@ -55,6 +56,7 @@ export function AdminShell({
   return (
     <SidebarProvider defaultOpen>
       <ThemePreferenceSync preferredTheme={preferredTheme} />
+      <RealtimeSync enabled />
       <Sidebar
         key={sidebarSide}
         side={sidebarSide}

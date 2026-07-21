@@ -34,25 +34,32 @@ Enable for **Builds** and **Functions** (Production + Deploy Previews).
 
 Do **not** mix keys from older Supabase projects.
 
-## 3. Supabase Auth redirect
+## 3. Supabase Auth (required for login)
 
-Supabase → Authentication → URL configuration:
+Supabase → **Authentication** → **URL Configuration**:
 
-```
-https://YOUR-SITE.netlify.app/**
-https://YOUR-SITE.netlify.app/auth/callback
-```
+| Setting | Value |
+|---------|--------|
+| Site URL | `https://YOUR-SITE.netlify.app` |
+| Redirect URLs | `https://YOUR-SITE.netlify.app/**` |
+| | `https://YOUR-SITE.netlify.app/auth/callback` |
+| | `https://YOUR-SITE.netlify.app/login` |
+| | `https://YOUR-SITE.netlify.app/admin/**` |
 
-Site URL: `https://YOUR-SITE.netlify.app`
+Also enable **Email** provider (password login).
+
+If login says “no admin_users row”, open `/admin/setup` once (or insert the admin profile).
 
 ## 4. After deploy
 
 1. Open `https://YOUR-SITE.netlify.app/api/health`
 2. Create admin if needed: `/admin/setup`
 3. Login: `novahome756@gmail.com`
-4. Test forgot-password
+4. Confirm browser console has **no** Realtime WebSocket spam on the public homepage
+5. Test forgot-password
 
 ## Notes
 
 - Cloudflare remains optional via `npm run build:cloudflare` / `deploy:cloudflare`
 - Never set `DEV_AUTH_ENABLED` on Netlify production
+- Prefer legacy **anon JWT** (`eyJ…`) if `sb_publishable_…` causes Auth/Realtime issues; both are supported

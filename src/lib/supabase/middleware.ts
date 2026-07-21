@@ -5,8 +5,10 @@ import {
   getResolvedSupabasePublicEnv,
   hasSupabasePublicEnv,
 } from "@/lib/env/supabase-public";
+import { withAuthCookieOptions } from "@/lib/supabase/cookie-options";
 
-const SESSION_TIMEOUT_MS = 4000;
+// Netlify cold starts can exceed 4s; don't abort session refresh too early.
+const SESSION_TIMEOUT_MS = 10_000;
 let lastSessionWarnAt = 0;
 const SESSION_WARN_COOLDOWN_MS = 60_000;
 
@@ -30,13 +32,7 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 }
 
 /**
- * Refresh Supabase cookies and forward pathname.
- *
- * Edge Runtime notes:
- * - Only imports Edge-compatible modules (next/server, @supabase/ssr, env helpers).
- * - @supabase/supabase-js >= 2.110.5 avoids static `process.version` access
- *   (uses globalThis['process']) so Next.js Edge analysis stays clean.
- * - Auth redirects stay in Server Components to avoid breaking RSC fetches.
+ * Refresh Supabase auth cookies on every matched request (SSR session bridge).
  */
 export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -57,29 +53,30 @@ export async function updateSession(request: NextRequest) {
       return supabaseResponse;
     }
 
-    const supabase = createServerClient(
-      resolved.url,
-      resolved.anonKey,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value }) => {
-              request.cookies.set(name, value);
-            });
-            supabaseResponse = NextResponse.next({
-              request: { headers: requestHeaders },
-            });
-            cookiesToSet.forEach(({ name, value, options }) => {
-              supabaseResponse.cookies.set(name, value, options);
-            });
-          },
+    const supabase = createServerClient(resolved.url, resolved.anonKey, {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => {
+            request.cookies.set(name, value);
+          });
+          supabaseResponse = NextResponse.next({
+            request: { headers: requestHeaders },
+          });
+          cookiesToSet.forEach(({ name, value, options }) => {
+            supabaseResponse.cookies.set(
+              name,
+              value,
+              withAuthCookieOptions(options),
+            );
+          });
         },
       },
-    );
+    });
 
+    // getUser() validates JWT with Auth server and refreshes cookies when needed.
     await withTimeout(supabase.auth.getUser(), SESSION_TIMEOUT_MS);
   } catch (err) {
     const message =

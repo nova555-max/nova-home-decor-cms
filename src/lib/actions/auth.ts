@@ -185,7 +185,8 @@ export async function signInAsAdmin(
       return {
         success: false,
         error:
-          "Supabase Auth login succeeded, but no admin_users row exists for this email. Open /admin/setup (first install) or add the profile.",
+          "Supabase Auth login succeeded, but no admin_users row exists for this email. " +
+          "Open /admin/setup (first install), or verify SUPABASE_SERVICE_ROLE_KEY can read admin_users.",
       };
     }
 

@@ -34,35 +34,60 @@ function mapAdminUser(row: AdminUser): AdminContext {
 export async function getAdminUserByAuthId(
   authUserId: string,
 ): Promise<AdminUser | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("admin_users")
-    .select("*")
-    .eq("auth_user_id", authUserId)
-    .maybeSingle();
+  // Service role avoids RLS chicken-and-egg when auth_user_id is missing/mismatched.
+  try {
+    const service = createServiceClient();
+    const { data, error } = await service
+      .from("admin_users")
+      .select("*")
+      .eq("auth_user_id", authUserId)
+      .maybeSingle();
 
-  if (error || !data) return null;
-  return {
-    ...data,
-    permissions: normalizePermissions(data.permissions),
-  } as AdminUser;
+    if (error) {
+      console.error("[getAdminUserByAuthId]", error.message);
+      return null;
+    }
+    if (!data) return null;
+    return {
+      ...data,
+      permissions: normalizePermissions(data.permissions),
+    } as AdminUser;
+  } catch (err) {
+    console.error(
+      "[getAdminUserByAuthId]",
+      err instanceof Error ? err.message : err,
+    );
+    return null;
+  }
 }
 
 export async function getAdminUserByEmail(
   email: string,
 ): Promise<AdminUser | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("admin_users")
-    .select("*")
-    .ilike("email", email)
-    .maybeSingle();
+  try {
+    const service = createServiceClient();
+    const { data, error } = await service
+      .from("admin_users")
+      .select("*")
+      .ilike("email", email)
+      .maybeSingle();
 
-  if (error || !data) return null;
-  return {
-    ...data,
-    permissions: normalizePermissions(data.permissions),
-  } as AdminUser;
+    if (error) {
+      console.error("[getAdminUserByEmail]", error.message);
+      return null;
+    }
+    if (!data) return null;
+    return {
+      ...data,
+      permissions: normalizePermissions(data.permissions),
+    } as AdminUser;
+  } catch (err) {
+    console.error(
+      "[getAdminUserByEmail]",
+      err instanceof Error ? err.message : err,
+    );
+    return null;
+  }
 }
 
 export async function listEditorUsers(): Promise<AdminUser[]> {

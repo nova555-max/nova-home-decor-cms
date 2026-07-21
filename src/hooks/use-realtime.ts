@@ -4,17 +4,31 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
-import { hasSupabasePublicEnv } from "@/lib/env/supabase-public";
 
-export function useRealtimeSync() {
+/**
+ * Realtime CMS refresh for authenticated admin sessions only.
+ * Public anonymous Realtime subscriptions caused WebSocket spam/failures on Netlify
+ * when tables were not published or RLS blocked anon.
+ */
+export function useRealtimeSync(enabled = true) {
   const router = useRouter();
 
   useEffect(() => {
-    if (process.env.NODE_ENV === "development" || !hasSupabasePublicEnv()) {
+    if (!enabled || process.env.NODE_ENV === "development") {
       return;
     }
 
-    const supabase = createClient();
+    let cancelled = false;
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    let channel: ReturnType<ReturnType<typeof createClient>["channel"]> | null =
+      null;
+    let supabase: ReturnType<typeof createClient> | null = null;
+
+    const scheduleRefresh = () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => router.refresh(), 1000);
+    };
+
     const tables = [
       "website_settings",
       "homepage_content",
@@ -26,32 +40,56 @@ export function useRealtimeSync() {
       "website_content_strings",
     ] as const;
 
-    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
-    const scheduleRefresh = () => {
-      if (refreshTimer) clearTimeout(refreshTimer);
-      refreshTimer = setTimeout(() => router.refresh(), 1000);
-    };
+    void (async () => {
+      try {
+        supabase = createClient();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
 
-    const channel = supabase.channel("cms-realtime");
+        if (cancelled || !session) {
+          return;
+        }
 
-    tables.forEach((table) => {
-      channel.on(
-        "postgres_changes",
-        { event: "*", schema: "public", table },
-        scheduleRefresh,
-      );
-    });
+        channel = supabase.channel("cms-realtime-admin");
 
-    channel.subscribe();
+        for (const table of tables) {
+          channel.on(
+            "postgres_changes",
+            { event: "*", schema: "public", table },
+            scheduleRefresh,
+          );
+        }
+
+        channel.subscribe((status, err) => {
+          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            console.warn(
+              "[realtime]",
+              status,
+              err?.message ??
+                "WebSocket failed. Check Supabase Realtime is enabled and tables are in supabase_realtime publication.",
+            );
+          }
+        });
+      } catch (err) {
+        console.warn(
+          "[realtime] disabled:",
+          err instanceof Error ? err.message : err,
+        );
+      }
+    })();
 
     return () => {
+      cancelled = true;
       if (refreshTimer) clearTimeout(refreshTimer);
-      void supabase.removeChannel(channel);
+      if (supabase && channel) {
+        void supabase.removeChannel(channel);
+      }
     };
-  }, [router]);
+  }, [enabled, router]);
 }
 
-export function RealtimeSync() {
-  useRealtimeSync();
+export function RealtimeSync({ enabled = true }: { enabled?: boolean }) {
+  useRealtimeSync(enabled);
   return null;
 }

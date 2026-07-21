@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 import { requireSupabasePublicEnv } from "@/lib/env/supabase-public";
+import { withAuthCookieOptions } from "@/lib/supabase/cookie-options";
 
 export async function createClient() {
   const cookieStore = await cookies();
@@ -15,10 +16,10 @@ export async function createClient() {
       setAll(cookiesToSet) {
         try {
           cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
+            cookieStore.set(name, value, withAuthCookieOptions(options));
           });
         } catch {
-          // setAll is called from a Server Component where cookies cannot be set.
+          // Server Components cannot always set cookies; middleware refreshes session.
         }
       },
     },
