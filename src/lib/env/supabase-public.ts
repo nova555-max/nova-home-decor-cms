@@ -1,7 +1,6 @@
+import { PUBLIC_ENV_DEFAULTS } from "@/config/public-env-defaults";
 import {
-  formatMissingEnvError,
   getRuntimeEnvSnapshot,
-  logEnvDiagnostics,
   resolveSupabaseUrlFromKey,
 } from "@/lib/env/runtime";
 import { getSupabaseKeyMismatchDetail } from "@/lib/env/supabase-errors";
@@ -21,81 +20,48 @@ export function getResolvedSupabasePublicEnv(): {
   anonKey: string;
 } | null {
   const snap = getRuntimeEnvSnapshot();
-  const anonKey = snap.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!anonKey) return null;
+  const anonKey =
+    snap.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    PUBLIC_ENV_DEFAULTS.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const urlRaw =
+    snap.NEXT_PUBLIC_SUPABASE_URL ||
+    PUBLIC_ENV_DEFAULTS.NEXT_PUBLIC_SUPABASE_URL;
 
-  const url =
-    resolveSupabaseUrlFromKey(snap.NEXT_PUBLIC_SUPABASE_URL, anonKey) ||
-    snap.NEXT_PUBLIC_SUPABASE_URL;
-
-  if (!url) return null;
+  const url = resolveSupabaseUrlFromKey(urlRaw, anonKey) || urlRaw;
+  if (!url || !anonKey) return null;
   return { url, anonKey };
 }
 
 export function hasSupabasePublicEnv(): boolean {
-  const url = getSupabaseUrl();
-  const key = getSupabaseAnonKey();
+  const resolved = getResolvedSupabasePublicEnv();
+  if (!resolved) return false;
   return (
-    !!url &&
-    !!key &&
-    !url.includes("your-project") &&
-    !key.includes("your-anon")
+    !resolved.url.includes("your-project") &&
+    !resolved.anonKey.includes("your-anon")
   );
 }
 
+/**
+ * Always returns a usable public env pair.
+ * Falls back to baked-in project defaults so a missing Cloudflare Build var
+ * cannot crash the entire client app.
+ */
 export function requireSupabasePublicEnv(): {
   url: string;
   anonKey: string;
 } {
   const resolved = getResolvedSupabasePublicEnv();
-  const snap = getRuntimeEnvSnapshot();
-
-  if (!resolved) {
-    logEnvDiagnostics("[supabase-public]");
-    throw new Error(
-      formatMissingEnvError(
-        [
-          !snap.NEXT_PUBLIC_SUPABASE_URL
-            ? {
-                name: "NEXT_PUBLIC_SUPABASE_URL",
-                status: "missing" as const,
-                detail:
-                  "Missing. Set NEXT_PUBLIC_SUPABASE_URL in Cloudflare Variables (and Build variables).",
-                required: true,
-                secret: false,
-              }
-            : {
-                name: "NEXT_PUBLIC_SUPABASE_URL",
-                status: "ok" as const,
-                detail: snap.NEXT_PUBLIC_SUPABASE_URL,
-                required: true,
-                secret: false,
-              },
-          !snap.NEXT_PUBLIC_SUPABASE_ANON_KEY
-            ? {
-                name: "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-                status: "missing" as const,
-                detail:
-                  "Missing. Set NEXT_PUBLIC_SUPABASE_ANON_KEY (or PUBLISHABLE_KEY).",
-                required: true,
-                secret: false,
-              }
-            : {
-                name: "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-                status: "ok" as const,
-                detail: "Present",
-                required: true,
-                secret: false,
-              },
-        ].filter((c) => c.status !== "ok"),
-      ),
-    );
+  if (resolved) {
+    const mismatch = getSupabaseKeyMismatchDetail();
+    if (mismatch) {
+      console.error("[supabase-public]", mismatch);
+    }
+    return resolved;
   }
 
-  const mismatch = getSupabaseKeyMismatchDetail();
-  if (mismatch) {
-    console.error("[supabase-public]", mismatch);
-  }
-
-  return resolved;
+  // Absolute last resort — should be unreachable when defaults exist.
+  return {
+    url: PUBLIC_ENV_DEFAULTS.NEXT_PUBLIC_SUPABASE_URL,
+    anonKey: PUBLIC_ENV_DEFAULTS.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  };
 }

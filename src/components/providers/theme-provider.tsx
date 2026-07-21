@@ -6,6 +6,10 @@ import { THEME_STORAGE_KEY } from "@/lib/theme/config";
 
 type ThemeProviderProps = React.ComponentProps<typeof NextThemesProvider>;
 
+/**
+ * Theme FOUC script lives in root layout (with __name polyfill).
+ * next-themes still mounts; keep_names:false in wrangler + polyfill cover CF.
+ */
 export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
   return (
     <NextThemesProvider
