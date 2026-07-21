@@ -20,6 +20,34 @@ type LocationDetailsProps = {
   compact?: boolean;
 };
 
+function resolveAddressParts(office: OfficeLocation) {
+  const subtitle = formatOfficePublicSubtitle(office);
+  const street = office.street?.trim() || null;
+  const name = office.name?.trim() || "Nova Home Decor";
+
+  // Prefer structured fields; otherwise parse free-text street.
+  let city = office.city?.trim() || null;
+  let region = office.district?.trim() || null;
+  let country = office.country?.trim() || null;
+
+  if ((!city || !region) && street) {
+    const chunks = street
+      .split(",")
+      .map((c) => c.trim())
+      .filter(Boolean)
+      .filter((c) => !/^nova\s*home/i.test(c));
+    if (!city && chunks[0]) city = chunks[0];
+    if (!region && chunks[1]) region = chunks[1];
+    if (!country && chunks[2]) country = chunks[2];
+  }
+
+  const line = street
+    ? street.replace(/^nova\s*home(?:\s*decor)?[,\s-]*/i, "").trim() || street
+    : subtitle || name;
+
+  return { name, line, city, region, country, subtitle };
+}
+
 /** Structured address: full line, city, region, country + Get Directions. */
 export function LocationDetails({
   office,
@@ -28,28 +56,25 @@ export function LocationDetails({
   showDirections = true,
   compact = false,
 }: LocationDetailsProps) {
-  const fullAddress =
-    [office.street, office.name].filter((p) => p?.trim()).join(" · ") ||
-    office.name;
-  const region = office.district?.trim() || null;
+  const parts = resolveAddressParts(office);
   const directionsUrl = buildGoogleMapsNavigationUrl(
     office.latitude,
     office.longitude,
   );
 
   const rows: { label: string; value: string }[] = [
-    { label: t(locale, "location", "address"), value: fullAddress },
+    { label: t(locale, "location", "address"), value: parts.line },
   ];
-  if (office.city?.trim()) {
-    rows.push({ label: t(locale, "location", "city"), value: office.city });
+  if (parts.city) {
+    rows.push({ label: t(locale, "location", "city"), value: parts.city });
   }
-  if (region) {
-    rows.push({ label: t(locale, "location", "region"), value: region });
+  if (parts.region) {
+    rows.push({ label: t(locale, "location", "region"), value: parts.region });
   }
-  if (office.country?.trim()) {
+  if (parts.country) {
     rows.push({
       label: t(locale, "location", "country"),
-      value: office.country,
+      value: parts.country,
     });
   }
 
@@ -73,14 +98,9 @@ export function LocationDetails({
         </div>
       ) : (
         <div className="space-y-1 text-sm leading-relaxed">
-          <p className="font-medium text-foreground">{office.name}</p>
-          {formatOfficePublicSubtitle(office) ? (
-            <p className="text-muted-foreground">
-              {formatOfficePublicSubtitle(office)}
-            </p>
-          ) : null}
-          {office.street?.trim() ? (
-            <p className="text-muted-foreground">{office.street}</p>
+          <p className="font-medium text-foreground">{parts.name}</p>
+          {parts.line ? (
+            <p className="text-muted-foreground">{parts.line}</p>
           ) : null}
         </div>
       )}
@@ -91,10 +111,7 @@ export function LocationDetails({
           target="_blank"
           rel="noopener noreferrer"
           variant="gold"
-          className={cn(
-            "rounded-[16px]",
-            compact && "h-9 px-4 text-xs",
-          )}
+          className={cn("rounded-[16px]", compact && "h-9 px-4 text-xs")}
         >
           <Navigation className="size-4" />
           {t(locale, "location", "get_directions")}

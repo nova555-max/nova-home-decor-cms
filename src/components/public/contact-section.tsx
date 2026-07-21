@@ -127,6 +127,10 @@ export function ContactSection({
               <div className="space-y-1">
                 <p className="font-medium text-foreground">{office.name}</p>
                 {addressSubtitle ? <p>{addressSubtitle}</p> : null}
+                {office.street?.trim() &&
+                office.street.trim() !== addressSubtitle ? (
+                  <p className="text-xs opacity-80">{office.street}</p>
+                ) : null}
               </div>
             ) : (
               <span className="text-muted-foreground/70">—</span>

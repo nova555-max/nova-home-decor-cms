@@ -49,6 +49,7 @@ export function ContactMapPanel({
         longitude={office.longitude}
         title={office.name}
         variant="full"
+        eager
         className="rounded-none"
       />
       <div className="space-y-5 p-6 md:p-8">

@@ -12,7 +12,7 @@ import type { OfficeLocation } from "@/types/office-location";
 import { LazyGoogleMap } from "@/components/public/lazy-google-map";
 import { LocationDetails } from "@/components/public/location-details";
 import { LuxuryButton } from "@/components/public/showroom/luxury-button";
-import { PhoneLinkList } from "@/components/ui/phone-link";
+import { PhoneLinkList, PhoneText } from "@/components/ui/phone-link";
 import { Input } from "@/components/ui/input";
 
 type SiteFooterProps = {
@@ -79,13 +79,19 @@ export function SiteFooter({ settings, locale, office }: SiteFooterProps) {
                   target="_blank"
                   rel="noopener noreferrer"
                   dir="ltr"
-                  className="inline-flex items-center gap-2.5 transition hover:text-[var(--gold)]"
+                  className="inline-flex flex-wrap items-center gap-2.5 transition hover:text-[var(--gold)]"
                   style={{ unicodeBidi: "plaintext" }}
                 >
                   <MessageCircle className="size-4 shrink-0 opacity-60" />
                   <span className="whitespace-nowrap">
                     {t(locale, "common", "whatsapp")}
                   </span>
+                  {settings?.whatsapp_number ? (
+                    <PhoneText
+                      phone={settings.whatsapp_number}
+                      className="text-muted-foreground"
+                    />
+                  ) : null}
                 </a>
               ) : null}
             </div>

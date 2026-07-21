@@ -14,6 +14,8 @@ type LazyGoogleMapProps = {
   /** Compact preview (footer) vs full contact map */
   variant?: "full" | "preview";
   zoom?: number;
+  /** Load immediately without waiting for intersection (contact panel). */
+  eager?: boolean;
 };
 
 /**
@@ -27,27 +29,40 @@ export function LazyGoogleMap({
   className,
   variant = "full",
   zoom,
+  eager = false,
 }: LazyGoogleMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [shouldLoad, setShouldLoad] = useState(false);
+  const [shouldLoad, setShouldLoad] = useState(eager);
 
   useEffect(() => {
+    if (shouldLoad) return;
     const node = containerRef.current;
-    if (!node || shouldLoad) return;
+    if (!node) return;
+
+    const reveal = () => setShouldLoad(true);
+
+    // Already on screen (e.g. scrolled into contact) — load without waiting.
+    const rect = node.getBoundingClientRect();
+    const inView =
+      rect.top < window.innerHeight + 160 && rect.bottom > -80;
+    if (inView) {
+      reveal();
+      return;
+    }
 
     if (typeof IntersectionObserver === "undefined") {
-      setShouldLoad(true);
+      reveal();
       return;
     }
 
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) {
-          setShouldLoad(true);
+          reveal();
           observer.disconnect();
         }
       },
-      { rootMargin: "120px 0px", threshold: 0.08 },
+      { rootMargin: "200px 0px", threshold: 0.01 },
     );
 
     observer.observe(node);
@@ -69,23 +84,22 @@ export function LazyGoogleMap({
       ref={containerRef}
       className={cn(
         "relative overflow-hidden bg-muted/60",
-        variant === "preview" ? "min-h-[140px] rounded-2xl" : "min-h-[280px] md:min-h-[380px]",
+        variant === "preview"
+          ? "min-h-[160px] rounded-2xl"
+          : "aspect-[4/3] min-h-[280px] w-full md:min-h-[380px]",
         className,
       )}
     >
       {!shouldLoad ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-[var(--showroom-card)] via-muted/40 to-[var(--gold)]/10">
           <MapPin className="size-6 text-[var(--gold)] opacity-80" aria-hidden />
-          <span className="text-muted-foreground text-xs tracking-wide">
-            …
-          </span>
         </div>
       ) : (
         <iframe
           title={title}
           src={embedSrc}
           className="absolute inset-0 size-full border-0"
-          loading="lazy"
+          loading={eager ? "eager" : "lazy"}
           referrerPolicy="no-referrer-when-downgrade"
           allowFullScreen
         />

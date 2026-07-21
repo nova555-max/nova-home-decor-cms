@@ -1,5 +1,5 @@
 /* Nova Home Decor — light public offline shell (never caches admin or Next chunks). */
-const CACHE = "nova-static-v2";
+const CACHE = "nova-static-v3";
 const PRECACHE = [
   "/",
   "/manifest.webmanifest",

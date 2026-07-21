@@ -100,10 +100,20 @@ export function formatOfficePublicSubtitle(office: {
   city?: string | null;
   district?: string | null;
   country?: string | null;
+  street?: string | null;
 }): string {
-  return [office.city, office.district, office.country]
-    .filter((part) => part?.trim())
-    .join(", ");
+  const parts = [office.city, office.district, office.country]
+    .map((part) => part?.trim())
+    .filter(Boolean) as string[];
+
+  if (parts.length) return parts.join(", ");
+
+  // Fallback when geocode only filled `street` (e.g. "Basirma, Erbil Governorate, Iraq").
+  const street = office.street?.trim();
+  if (!street) return "";
+  return street
+    .replace(/^nova\s*home(?:\s*decor)?[,\s-]*/i, "")
+    .trim();
 }
 
 export function validateOfficeLocation(input: {
