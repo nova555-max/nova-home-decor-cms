@@ -18,7 +18,9 @@ export async function GET() {
       auth: report.auth.status,
       resend: report.resend.status,
       gemini: report.gemini.status,
-      cloudflare: report.cloudflare.status,
+      hosting: report.hosting.status,
+      // Alias kept for older dashboards / bookmarks
+      cloudflare: report.hosting.status,
       storage: report.storage.status,
       admin: report.admin.status,
       details: {
@@ -28,7 +30,8 @@ export async function GET() {
         auth: report.auth.detail,
         resend: report.resend.detail,
         gemini: report.gemini.detail,
-        cloudflare: report.cloudflare.detail,
+        hosting: report.hosting.detail,
+        cloudflare: report.hosting.detail,
         storage: report.storage.detail,
         admin: report.admin.detail,
         env: report.env,

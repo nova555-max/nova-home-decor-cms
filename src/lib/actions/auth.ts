@@ -43,7 +43,7 @@ function explainSupabaseAuthError(message: string): string {
     return (
       "Invalid API key — NEXT_PUBLIC_SUPABASE_ANON_KEY (or PUBLISHABLE_KEY) is wrong for this project, " +
       "or NEXT_PUBLIC_SUPABASE_URL points to a different Supabase project. " +
-      "Fix both in Cloudflare Variables and Secrets, then redeploy. Original: " +
+      "Fix both in Netlify → Environment variables (Builds + Functions), then redeploy. Original: " +
       message
     );
   }
@@ -255,7 +255,7 @@ export async function forgotPassword(email: string): Promise<ActionResult> {
     return {
       success: false,
       error:
-        "RESEND_API_KEY is missing. Add it under Cloudflare → Variables and Secrets (Secret), then Save/Deploy.",
+        "RESEND_API_KEY is missing. Add it under Netlify → Site configuration → Environment variables, then redeploy.",
     };
   }
 

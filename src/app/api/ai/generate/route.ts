@@ -69,7 +69,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "AI is not configured. Add Secret GEMINI_API_KEY in Cloudflare → Variables and Secrets.",
+            "AI is not configured. Add GEMINI_API_KEY in Netlify → Environment variables.",
         },
         { status: 503 },
       );

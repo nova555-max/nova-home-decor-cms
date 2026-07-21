@@ -16,7 +16,6 @@ function pruneExpiredBuckets(now: number): void {
     if (buckets.size <= MAX_BUCKETS * 0.8) break;
   }
 
-  // Still over limit — drop oldest entries (approximate LRU via insertion order).
   while (buckets.size > MAX_BUCKETS) {
     const first = buckets.keys().next().value;
     if (first === undefined) break;
@@ -54,24 +53,19 @@ function isLikelyIp(value: string): boolean {
   return IPV4_RE.test(value) || (value.includes(":") && IPV6_RE.test(value));
 }
 
-/** Prefer Cloudflare-provided client IP; fall back to forwarded headers. */
+/** Prefer platform client IP headers (Netlify / Cloudflare / proxies). */
 export function getClientKey(request: Request): string {
-  const cfIp = request.headers.get("cf-connecting-ip")?.trim();
-  if (cfIp && isLikelyIp(cfIp)) {
-    return `ip:${cfIp}`;
-  }
+  const candidates = [
+    request.headers.get("x-nf-client-connection-ip")?.trim(),
+    request.headers.get("cf-connecting-ip")?.trim(),
+    request.headers.get("x-real-ip")?.trim(),
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim(),
+  ];
 
-  const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) {
-    const candidate = forwarded.split(",")[0]?.trim();
+  for (const candidate of candidates) {
     if (candidate && isLikelyIp(candidate)) {
       return `ip:${candidate}`;
     }
-  }
-
-  const realIp = request.headers.get("x-real-ip")?.trim();
-  if (realIp && isLikelyIp(realIp)) {
-    return `ip:${realIp}`;
   }
 
   return "anonymous";

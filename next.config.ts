@@ -34,7 +34,6 @@ function serverActionOrigins(): string[] {
     "127.0.0.1:3000",
     "localhost:3001",
     "127.0.0.1:3001",
-    "nova-home-decor-cms.novahome756.workers.dev",
   ]) {
     addAllowedOrigin(origins, host);
   }
@@ -44,6 +43,11 @@ function serverActionOrigins(): string[] {
   addAllowedOrigin(origins, process.env.URL ?? "");
   addAllowedOrigin(origins, process.env.DEPLOY_PRIME_URL ?? "");
   addAllowedOrigin(origins, process.env.DEPLOY_URL ?? "");
+  // Optional legacy Cloudflare host if still referenced.
+  addAllowedOrigin(
+    origins,
+    "https://nova-home-decor-cms.novahome756.workers.dev",
+  );
 
   return [...origins];
 }

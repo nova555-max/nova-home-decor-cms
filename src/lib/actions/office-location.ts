@@ -290,8 +290,12 @@ export async function geocodeOfficeCoordinates(
   try {
     await requirePermission("settings");
 
+    const { resolvePublicEnvWithDefaults } = await import(
+      "@/config/public-env-defaults"
+    );
+    const appUrl = resolvePublicEnvWithDefaults().NEXT_PUBLIC_APP_URL;
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/geocode/reverse?lat=${latitude}&lng=${longitude}`,
+      `${appUrl}/api/geocode/reverse?lat=${latitude}&lng=${longitude}`,
       { cache: "no-store" },
     );
     if (!response.ok) {

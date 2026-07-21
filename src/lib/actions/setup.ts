@@ -87,7 +87,7 @@ export async function createFirstAdministrator(
     return {
       success: false,
       error:
-        "Add SUPABASE_SERVICE_ROLE_KEY in Cloudflare → Variables and Secrets (Secret), then Save/Deploy. " +
+        "Add SUPABASE_SERVICE_ROLE_KEY in Netlify → Site configuration → Environment variables, then redeploy. " +
         "Copy service_role from Supabase → Settings → API (not the anon key).",
     };
   }

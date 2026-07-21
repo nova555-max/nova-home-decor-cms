@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { resolvePublicEnvWithDefaults } from "@/config/public-env-defaults";
+
 /** Treat blank Netlify/UI env values as unset (zod `.optional()` rejects `""`). */
 function emptyToUndefined(value: unknown): unknown {
   if (typeof value !== "string") return value;
@@ -27,32 +29,29 @@ const envSchema = z.object({
 });
 
 function createEnv() {
+  const pub = resolvePublicEnvWithDefaults();
+
   const parsed = envSchema.safeParse({
-    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-    NEXT_PUBLIC_DEFAULT_LOCALE: process.env.NEXT_PUBLIC_DEFAULT_LOCALE,
+    NEXT_PUBLIC_APP_URL: pub.NEXT_PUBLIC_APP_URL,
+    NEXT_PUBLIC_DEFAULT_LOCALE: pub.NEXT_PUBLIC_DEFAULT_LOCALE,
     NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:
       process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
-    SUPER_ADMIN_EMAIL: process.env.SUPER_ADMIN_EMAIL,
+    SUPER_ADMIN_EMAIL: pub.SUPER_ADMIN_EMAIL,
   });
 
   if (!parsed.success) {
     const fieldErrors = parsed.error.flatten().fieldErrors;
     console.error("[env] Invalid environment variables:", fieldErrors);
 
-    // Never crash the app at import time — use safe defaults and log.
     return {
-      NEXT_PUBLIC_APP_URL:
-        process.env.NEXT_PUBLIC_APP_URL?.trim() || "http://localhost:3000",
-      NEXT_PUBLIC_DEFAULT_LOCALE:
-        (process.env.NEXT_PUBLIC_DEFAULT_LOCALE?.trim() as
-          | "ku"
-          | "ar"
-          | "en"
-          | undefined) || "ku",
+      NEXT_PUBLIC_APP_URL: pub.NEXT_PUBLIC_APP_URL,
+      NEXT_PUBLIC_DEFAULT_LOCALE: pub.NEXT_PUBLIC_DEFAULT_LOCALE as
+        | "ku"
+        | "ar"
+        | "en",
       NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:
         process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() || undefined,
-      SUPER_ADMIN_EMAIL:
-        process.env.SUPER_ADMIN_EMAIL?.trim().toLowerCase() || undefined,
+      SUPER_ADMIN_EMAIL: pub.SUPER_ADMIN_EMAIL.toLowerCase(),
     };
   }
 

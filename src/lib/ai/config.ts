@@ -24,7 +24,7 @@ export function assertGeminiConfigured(): string {
   const key = getGeminiApiKey();
   if (!key) {
     throw new Error(
-      "GEMINI_API_KEY is not configured. Add Secret GEMINI_API_KEY in Cloudflare Variables and Secrets (or .env.local locally).",
+      "GEMINI_API_KEY is not configured. Add GEMINI_API_KEY in Netlify → Environment variables (or .env.local locally).",
     );
   }
   return key;

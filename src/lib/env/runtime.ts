@@ -1,5 +1,5 @@
 /**
- * Runtime environment diagnostics for Cloudflare Workers / local / Docker.
+ * Runtime environment diagnostics for Netlify / local / Docker / Cloudflare.
  * Never throws at import time — call explicitly from health checks and auth flows.
  */
 
@@ -7,6 +7,7 @@ import {
   PUBLIC_ENV_DEFAULTS,
   readPublicEnvFromProcess,
 } from "@/config/public-env-defaults";
+import { HOST_ENV_HINT, HOST_SECRET_HINT } from "@/lib/env/host-hints";
 
 export type EnvCheckStatus = "ok" | "missing" | "invalid";
 
@@ -134,7 +135,7 @@ export function checkRequiredEnv(): EnvCheck[] {
       name: "NEXT_PUBLIC_SUPABASE_URL",
       status: "missing",
       detail:
-        "Missing. Set in Cloudflare → Variables and Secrets (and Build variables for client bundle).",
+        `Missing. ${HOST_ENV_HINT}`,
       required: true,
       secret: false,
     });
@@ -189,7 +190,7 @@ export function checkRequiredEnv(): EnvCheck[] {
       name: "SUPABASE_SERVICE_ROLE_KEY",
       status: "missing",
       detail:
-        "Missing. Cloudflare → Variables and Secrets → Add Secret. Copy service_role from Supabase → Settings → API (not the anon key).",
+        `Missing. ${HOST_SECRET_HINT} Copy service_role from Supabase → Settings → API (not the anon key).`,
       required: true,
       secret: true,
     });
@@ -257,7 +258,7 @@ export function checkRequiredEnv(): EnvCheck[] {
       name: "NEXT_PUBLIC_APP_URL",
       status: "missing",
       detail:
-        "Missing. Set to your Cloudflare Workers URL (e.g. https://nova-home-decor-cms.novahome756.workers.dev).",
+        "Missing. Set NEXT_PUBLIC_APP_URL to your Netlify site URL (e.g. https://YOUR-SITE.netlify.app).",
       required: true,
       secret: false,
     });

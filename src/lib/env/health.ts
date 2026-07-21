@@ -27,7 +27,7 @@ export type ProductionHealthReport = {
   auth: HealthCheckResult;
   resend: HealthCheckResult;
   gemini: HealthCheckResult;
-  cloudflare: HealthCheckResult;
+  hosting: HealthCheckResult;
   storage: HealthCheckResult;
   admin: HealthCheckResult;
   env: {
@@ -196,25 +196,26 @@ async function checkGemini(): Promise<HealthCheckResult> {
   }
 }
 
-async function checkCloudflare(): Promise<HealthCheckResult> {
+async function checkHosting(): Promise<HealthCheckResult> {
   const snap = getRuntimeEnvSnapshot();
+  const appUrl = snap.NEXT_PUBLIC_APP_URL ?? "missing";
   const onWorkers = isCloudflareWorkersRuntime();
+  const isNetlify =
+    !!process.env.NETLIFY ||
+    !!process.env.NETLIFY_DEV ||
+    appUrl.includes("netlify.app");
 
-  if (!onWorkers) {
-    return ok(
-      `Not running on Cloudflare Workers runtime (local/Node). APP_URL=${snap.NEXT_PUBLIC_APP_URL ?? "missing"}`,
-    );
+  if (isNetlify) {
+    return ok(`Netlify host detected. APP_URL=${appUrl}`);
   }
 
-  if (!snap.NEXT_PUBLIC_APP_URL?.includes("workers.dev")) {
+  if (onWorkers) {
     return warn(
-      `Running on Workers but NEXT_PUBLIC_APP_URL is ${snap.NEXT_PUBLIC_APP_URL ?? "missing"}.`,
+      `Cloudflare Workers runtime detected (legacy). Prefer Netlify. APP_URL=${appUrl}`,
     );
   }
 
-  return ok(
-    `Cloudflare Workers runtime detected. APP_URL=${snap.NEXT_PUBLIC_APP_URL}`,
-  );
+  return ok(`Local/Node runtime. APP_URL=${appUrl}`);
 }
 
 async function checkStorage(): Promise<HealthCheckResult> {
@@ -326,7 +327,7 @@ export async function runProductionHealthCheck(): Promise<ProductionHealthReport
     auth,
     resend,
     gemini,
-    cloudflare,
+    hosting,
     storage,
     admin,
   ] = await Promise.all([
@@ -336,7 +337,7 @@ export async function runProductionHealthCheck(): Promise<ProductionHealthReport
     checkAuth(),
     checkResend(),
     checkGemini(),
-    checkCloudflare(),
+    checkHosting(),
     checkStorage(),
     checkAdmin(),
   ]);
@@ -364,7 +365,7 @@ export async function runProductionHealthCheck(): Promise<ProductionHealthReport
     auth,
     resend,
     gemini,
-    cloudflare,
+    hosting,
     storage,
     admin,
     env: {

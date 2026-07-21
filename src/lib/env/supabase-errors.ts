@@ -90,7 +90,7 @@ export function formatSupabaseOperationError(
   if (kind === "invalid_key") {
     const hint = mismatch
       ? mismatch
-      : "Verify NEXT_PUBLIC_SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY in Cloudflare → Variables and Secrets.";
+      : `Verify NEXT_PUBLIC_SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY in Netlify → Environment variables.`;
     return `${operation} failed: Invalid API key. ${hint} Original: ${rawMessage}`;
   }
 
