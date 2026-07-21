@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 
 import { LOGIN_PATH } from "@/lib/auth/config";
+import { safeInternalPath } from "@/lib/auth/safe-redirect";
 import { createClient } from "@/lib/supabase/server";
 
 const ALLOWED_OTP_TYPES = new Set<EmailOtpType>([
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
   const tokenHash = searchParams.get("token_hash");
   const typeParam = searchParams.get("type");
   const next = searchParams.get("next") ?? "/admin/reset-password";
-  const safeNext = next.startsWith("/") ? next : "/admin/reset-password";
+  const safeNext = safeInternalPath(next, "/admin/reset-password");
 
   try {
     const supabase = await createClient();

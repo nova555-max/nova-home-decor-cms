@@ -4,13 +4,14 @@ import { MessageCircle, Phone } from "lucide-react";
 import { motion } from "@/lib/motion";
 
 import type { Locale } from "@/config/site";
-import { whatsappLink } from "@/lib/format";
+import { phoneTelHref, whatsappLink } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import { showroomText } from "@/lib/showroom/content";
 import type { HomepageContent, WebsiteSettings } from "@/types/database";
 import type { OfficeLocation } from "@/types/office-location";
 import { OfficeAddressDisplay } from "@/components/public/office-address-display";
 import { ButtonLink } from "@/components/ui/button-link";
+import { PhoneText } from "@/components/ui/phone-link";
 
 type ContactCtaSectionProps = {
   settings: WebsiteSettings | null;
@@ -27,7 +28,7 @@ export function ContactCtaSection({
 }: ContactCtaSectionProps) {
   const cta = homepage?.contact_cta?.[locale] ?? homepage?.contact_cta?.ku;
   const waLink = whatsappLink(settings?.whatsapp_number);
-  const phone = settings?.phone_number;
+  const telHref = phoneTelHref(settings?.phone_number);
 
   return (
     <section className="px-5 py-20 md:px-10 md:py-28 lg:px-14">
@@ -51,14 +52,21 @@ export function ContactCtaSection({
           </p>
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-            {phone ? (
+            {telHref ? (
               <ButtonLink
-                href={`tel:${phone}`}
+                href={telHref}
                 variant="gold"
+                dir="ltr"
                 className="rounded-[20px] px-8 py-6"
               >
-                <Phone className="size-4" />
-                {showroomText(cta?.cta, t(locale, "contact", "cta"))}
+                <Phone className="size-4 shrink-0" />
+                <span className="inline-flex flex-col items-start leading-tight sm:flex-row sm:items-center sm:gap-2">
+                  <span>{showroomText(cta?.cta, t(locale, "contact", "cta"))}</span>
+                  <PhoneText
+                    phone={settings?.phone_number}
+                    className="text-sm opacity-90"
+                  />
+                </span>
               </ButtonLink>
             ) : null}
             {waLink ? (

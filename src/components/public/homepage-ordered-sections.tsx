@@ -11,6 +11,7 @@ import type {
   WebsiteSettings,
 } from "@/types/database";
 import type { OfficeLocation } from "@/types/office-location";
+import type { HeroSlide } from "@/types/hero-slides";
 import type { HomepageSectionSetting } from "@/types/homepage-sections";
 import { HeroSection } from "@/components/public/hero-section";
 import { StatsSection } from "@/components/public/stats-section";
@@ -116,6 +117,7 @@ type HomepageOrderedSectionsProps = {
   gallery: GalleryItem[];
   testimonials: Testimonial[];
   office: OfficeLocation | null;
+  heroSlides?: HeroSlide[];
   activeCategoryId: string | null;
   onSelectCategory: (id: string | null) => void;
 };
@@ -131,6 +133,7 @@ export function HomepageOrderedSections({
   gallery,
   testimonials,
   office,
+  heroSlides = [],
   activeCategoryId,
   onSelectCategory,
 }: HomepageOrderedSectionsProps) {
@@ -164,6 +167,7 @@ export function HomepageOrderedSections({
                   locale={locale}
                   categories={categories}
                   products={products}
+                  heroSlides={heroSlides}
                 />
               </div>
             );

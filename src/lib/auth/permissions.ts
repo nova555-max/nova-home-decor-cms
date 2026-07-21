@@ -52,6 +52,7 @@ export function canManageEditors(ctx: Pick<AdminContext, "role">): boolean {
 const ROUTE_MODULE_MAP: Record<string, AdminModule | null> = {
   "/admin": "dashboard",
   "/admin/homepage": "homepage",
+  "/admin/hero-slider": "homepage",
   "/admin/section-visibility": "homepage",
   "/admin/office-location": "settings",
   "/admin/content": "content",

@@ -22,8 +22,12 @@
 #   SUPABASE_SERVICE_ROLE_KEY
 #   RESEND_API_KEY
 #   GEMINI_API_KEY
+#   OTP_PEPPER
+#   HEALTH_CHECK_SECRET
 #   NEXT_PUBLIC_APP_URL=https://YOUR-SITE.netlify.app
+#   NEXT_PUBLIC_GOOGLE_MAPS_API_KEY (optional)
 # Scopes: Builds + Functions (Production + Deploy Previews)
+# Do NOT set DEV_AUTH_ENABLED in production.
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"

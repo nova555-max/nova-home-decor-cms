@@ -24,7 +24,9 @@ import type { Locale } from "@/config/site";
 import type { WebsiteSettings } from "@/types/database";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
+import { PhoneText } from "@/components/ui/phone-link";
 import { useDirection, useMounted } from "@/hooks";
+import { formatInternationalPhone } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type DashboardPanelsProps = {
@@ -399,6 +401,7 @@ function SettingsSummary({ settings }: { settings: WebsiteSettings | null }) {
           <SummaryRow
             label={td(locale, "settings_fields.phone")}
             value={settings?.phone_number}
+            isPhone
           />
           <SummaryRow
             label={td(locale, "settings_fields.email")}
@@ -474,17 +477,30 @@ function ShortcutRow({ label, keys }: { label: string; keys: string }) {
 function SummaryRow({
   label,
   value,
+  isPhone = false,
 }: {
   label: string;
   value?: string | null;
+  isPhone?: boolean;
 }) {
   const { locale } = useDirection();
+  const display = isPhone
+    ? formatInternationalPhone(value) || null
+    : value;
+
   return (
     <div className="flex items-start justify-between gap-3">
       <span className="shrink-0 text-muted-foreground">{label}</span>
-      <span className="truncate text-end font-medium text-foreground">
-        {value || td(locale, "settings_fields.not_set")}
-      </span>
+      {isPhone && value ? (
+        <PhoneText
+          phone={value}
+          className="truncate text-end font-medium text-foreground"
+        />
+      ) : (
+        <span className="truncate text-end font-medium text-foreground">
+          {display || td(locale, "settings_fields.not_set")}
+        </span>
+      )}
     </div>
   );
 }

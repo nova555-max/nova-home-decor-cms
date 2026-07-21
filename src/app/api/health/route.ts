@@ -1,10 +1,29 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import { runProductionHealthCheck } from "@/lib/env/health";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+function isAuthorized(request: NextRequest): boolean {
+  const secret = process.env.HEALTH_CHECK_SECRET?.trim();
+  if (!secret) return false;
+
+  const header =
+    request.headers.get("x-health-secret")?.trim() ||
+    request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim();
+
+  return Boolean(header && header === secret);
+}
+
+export async function GET(request: NextRequest) {
+  // Public: minimal liveness only (no secrets / admin email / env dump).
+  if (!isAuthorized(request)) {
+    return NextResponse.json(
+      { ok: true, service: "nova-home-decor-cms" },
+      { status: 200 },
+    );
+  }
+
   const report = await runProductionHealthCheck();
 
   return NextResponse.json(
@@ -19,7 +38,6 @@ export async function GET() {
       resend: report.resend.status,
       gemini: report.gemini.status,
       hosting: report.hosting.status,
-      // Alias kept for older dashboards / bookmarks
       cloudflare: report.hosting.status,
       storage: report.storage.status,
       admin: report.admin.status,

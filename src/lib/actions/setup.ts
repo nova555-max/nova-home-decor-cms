@@ -142,24 +142,20 @@ export async function createFirstAdministrator(
       );
 
     if (already) {
+      // Never overwrite an existing Auth user's password from bootstrap.
+      // Link only — operator must already know the password or use Forgot password.
       authUserId = await findAuthUserIdByEmail(service, normalized);
       if (!authUserId) {
         return {
           success: false,
           error:
-            "Auth user already exists but could not be loaded. Open Supabase → Authentication → Users and confirm the email, then retry.",
+            "Auth user already exists but could not be loaded. Open Supabase → Authentication → Users and confirm the email, then retry with that account's existing password (or reset it in Supabase / Forgot password).",
         };
       }
-      const { error: updateError } = await service.auth.admin.updateUserById(
-        authUserId,
-        { password, email_confirm: true },
+      console.warn(
+        "[createFirstAdministrator] linking existing auth user without password change",
+        normalized,
       );
-      if (updateError) {
-        return {
-          success: false,
-          error: `Could not update existing auth user password: ${updateError.message}`,
-        };
-      }
     } else {
       console.error(
         "[createFirstAdministrator] auth",

@@ -3,13 +3,19 @@ import { createHash, randomInt, timingSafeEqual } from "crypto";
 export const OTP_LENGTH = 6;
 export const OTP_TTL_MS = 10 * 60 * 1000;
 export const OTP_RESEND_COOLDOWN_MS = 60 * 1000;
+/** Max wrong OTP attempts before the code is invalidated. */
+export const OTP_MAX_ATTEMPTS = 5;
 
 function otpPepper(): string {
-  return (
+  const pepper =
     process.env.OTP_PEPPER?.trim() ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
-    "nova-home-decor-otp"
-  );
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!pepper) {
+    throw new Error(
+      "OTP_PEPPER (or SUPABASE_SERVICE_ROLE_KEY) must be set for password-reset OTP hashing.",
+    );
+  }
+  return pepper;
 }
 
 export function generateOtpCode(): string {

@@ -1,3 +1,11 @@
+import {
+  formatInternationalPhone,
+  whatsappLink,
+  normalizePhone,
+  phoneTelHref,
+  collectPhones,
+} from "@/lib/phone/e164";
+
 export function slugify(text: string): string {
   return text
     .toLowerCase()
@@ -42,22 +50,10 @@ export function formatDate(date: string | null | undefined): string {
   }).format(new Date(date));
 }
 
-import { parsePhoneNumber } from "libphonenumber-js";
-
-export function formatInternationalPhone(
-  phone: string | null | undefined,
-): string {
-  if (!phone?.trim()) return "";
-  try {
-    const parsed = parsePhoneNumber(phone);
-    return parsed?.formatInternational() ?? phone;
-  } catch {
-    return phone;
-  }
-}
-
-export function whatsappLink(number: string | null | undefined): string | null {
-  if (!number) return null;
-  const digits = number.replace(/\D/g, "");
-  return digits ? `https://wa.me/${digits}` : null;
-}
+export {
+  formatInternationalPhone,
+  whatsappLink,
+  normalizePhone,
+  phoneTelHref,
+  collectPhones,
+};

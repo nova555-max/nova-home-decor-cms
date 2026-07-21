@@ -12,6 +12,7 @@ import {
   hashOtpCode,
   isValidOtpFormat,
   otpHashesMatch,
+  OTP_MAX_ATTEMPTS,
   OTP_RESEND_COOLDOWN_MS,
   OTP_TTL_MS,
 } from "@/lib/auth/password-otp";
@@ -25,7 +26,6 @@ import {
 } from "@/lib/env/runtime";
 import {
   formatSupabaseOperationError,
-  getSupabaseKeyMismatchDetail,
 } from "@/lib/env/supabase-errors";
 import {
   getAdminUserByAuthId,
@@ -42,33 +42,16 @@ type ServiceClient = ReturnType<typeof createServiceClient>;
 
 function explainSupabaseAuthError(message: string): string {
   if (/Invalid API key/i.test(message)) {
-    return (
-      "Invalid API key — NEXT_PUBLIC_SUPABASE_ANON_KEY (or PUBLISHABLE_KEY) is wrong for this project, " +
-      "or NEXT_PUBLIC_SUPABASE_URL points to a different Supabase project. " +
-      "Use project zfsoeketfjnnpirglosq (same as your admin_users data). " +
-      "Fix both in Netlify → Environment variables (Builds + Functions), then redeploy. Original: " +
-      message
-    );
+    console.error("[auth] Invalid API key", message);
+    return "Sign-in is misconfigured. Contact the site administrator.";
   }
   if (/Invalid login credentials/i.test(message)) {
-    const snap = getRuntimeEnvSnapshot();
-    const url = snap.NEXT_PUBLIC_SUPABASE_URL ?? "";
-    if (url && !url.includes("zfsoeketfjnnpirglosq")) {
-      return (
-        "Invalid email or password — and NEXT_PUBLIC_SUPABASE_URL is not the project that holds your users " +
-        `(current: ${url}). Set it to https://zfsoeketfjnnpirglosq.supabase.co with matching anon + service keys, then redeploy.`
-      );
-    }
-    return (
-      "Invalid email or password for this Supabase project. " +
-      "Use the password you set, or open Forgot password. " +
-      "If Netlify still points at an old project, update NEXT_PUBLIC_SUPABASE_URL to zfsoeketfjnnpirglosq and redeploy."
-    );
+    return "Invalid email or password.";
   }
   if (/Email not confirmed/i.test(message)) {
-    return "Email is not confirmed in Supabase Auth. Confirm the user in Supabase → Authentication → Users.";
+    return "Email is not confirmed. Contact the site administrator.";
   }
-  return message;
+  return "Could not sign in. Please try again.";
 }
 
 async function getServiceOrError(): Promise<
@@ -283,6 +266,9 @@ export async function signInWithSuperAdmin(
 
 export async function forgotPassword(email: string): Promise<ActionResult> {
   const normalized = email.trim().toLowerCase();
+  const genericSuccess: ActionResult = { success: true };
+  const genericClientError =
+    "If an admin account exists for that email, a verification code was sent.";
 
   if (!normalized) {
     return { success: false, error: "Email is required." };
@@ -290,25 +276,21 @@ export async function forgotPassword(email: string): Promise<ActionResult> {
 
   if (!isResendConfigured()) {
     logEnvDiagnostics("[forgotPassword:resend]");
+    console.error("[forgotPassword] RESEND_API_KEY missing");
     return {
       success: false,
-      error:
-        "RESEND_API_KEY is missing. Add it under Netlify → Site configuration → Environment variables, then redeploy.",
+      error: "Password reset is temporarily unavailable. Contact support.",
     };
   }
 
   const snap = getRuntimeEnvSnapshot();
-  if (snap.SUPER_ADMIN_EMAIL && normalized === snap.SUPER_ADMIN_EMAIL) {
-    // Explicit path for configured super admin — still require Auth user.
-  } else if (!snap.SUPER_ADMIN_EMAIL) {
-    console.warn(
-      "[forgotPassword] SUPER_ADMIN_EMAIL is not set; only active admin_users rows can reset.",
-    );
-  }
-
   const serviceResult = await getServiceOrError();
   if (!serviceResult.ok) {
-    return { success: false, error: serviceResult.error };
+    console.error("[forgotPassword] service", serviceResult.error);
+    return {
+      success: false,
+      error: "Password reset is temporarily unavailable. Contact support.",
+    };
   }
   const { service } = serviceResult;
 
@@ -321,16 +303,9 @@ export async function forgotPassword(email: string): Promise<ActionResult> {
 
   if (profileError) {
     console.error("[forgotPassword] admin lookup", profileError.message);
-    const mismatch = getSupabaseKeyMismatchDetail();
-    if (mismatch) {
-      return { success: false, error: mismatch };
-    }
     return {
       success: false,
-      error: formatSupabaseOperationError(
-        "Could not verify admin account",
-        profileError.message,
-      ),
+      error: "Password reset is temporarily unavailable. Contact support.",
     };
   }
 
@@ -338,27 +313,17 @@ export async function forgotPassword(email: string): Promise<ActionResult> {
     !!snap.SUPER_ADMIN_EMAIL && normalized === snap.SUPER_ADMIN_EMAIL;
 
   if (!isSuperAdminEmail && !profile?.is_active) {
-    return {
-      success: false,
-      error:
-        `No active admin_users row for ${normalized}. ` +
-        (snap.SUPER_ADMIN_EMAIL
-          ? `Expected SUPER_ADMIN_EMAIL=${snap.SUPER_ADMIN_EMAIL}, or another registered admin.`
-          : "Set SUPER_ADMIN_EMAIL or create the first admin at /admin/setup."),
-    };
+    // Do not reveal whether the email exists.
+    return genericSuccess;
   }
 
   const authLookup = await findAuthUserIdByEmail(service, normalized);
-  if (authLookup.error) {
-    return { success: false, error: authLookup.error };
-  }
-  if (!authLookup.id) {
-    return {
-      success: false,
-      error:
-        `SUPER_ADMIN / admin email ${normalized} is not in Supabase Auth users. ` +
-        "Create the user via /admin/setup or Supabase → Authentication → Users, then retry forgot password.",
-    };
+  if (authLookup.error || !authLookup.id) {
+    console.error(
+      "[forgotPassword] auth lookup",
+      authLookup.error ?? "missing auth user",
+    );
+    return genericSuccess;
   }
 
   const { data: recent } = await service
@@ -382,7 +347,16 @@ export async function forgotPassword(email: string): Promise<ActionResult> {
   }
 
   const otp = generateOtpCode();
-  const codeHash = hashOtpCode(otp, normalized);
+  let codeHash: string;
+  try {
+    codeHash = hashOtpCode(otp, normalized);
+  } catch (err) {
+    console.error("[forgotPassword] otp pepper", err);
+    return {
+      success: false,
+      error: "Password reset is temporarily unavailable. Contact support.",
+    };
+  }
   const now = new Date();
   const expiresAt = new Date(now.getTime() + OTP_TTL_MS);
 
@@ -399,7 +373,7 @@ export async function forgotPassword(email: string): Promise<ActionResult> {
     console.error("[forgotPassword] insert otp", insertError.message);
     return {
       success: false,
-      error: `Could not create verification code in password_reset_otps: ${insertError.message}`,
+      error: "Password reset is temporarily unavailable. Contact support.",
     };
   }
 
@@ -409,11 +383,13 @@ export async function forgotPassword(email: string): Promise<ActionResult> {
     await deleteOtpsForEmail(service, normalized);
     return {
       success: false,
-      error: `Resend failed: ${sent.error}`,
+      error: "Password reset is temporarily unavailable. Contact support.",
     };
   }
 
-  return { success: true };
+  // Keep success shape; UI may show genericClientError copy.
+  void genericClientError;
+  return genericSuccess;
 }
 
 export async function resetPasswordWithOtp(
@@ -447,7 +423,7 @@ export async function resetPasswordWithOtp(
 
   const { data: row, error: lookupError } = await service
     .from("password_reset_otps")
-    .select("id, code_hash, expires_at")
+    .select("id, code_hash, expires_at, attempt_count")
     .ilike("email", normalized)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -465,6 +441,15 @@ export async function resetPasswordWithOtp(
     return { success: false, error: "Invalid or unknown verification code." };
   }
 
+  const attempts = Number(row.attempt_count ?? 0);
+  if (attempts >= OTP_MAX_ATTEMPTS) {
+    await deleteOtpsForEmail(service, normalized);
+    return {
+      success: false,
+      error: "Too many invalid attempts. Request a new verification code.",
+    };
+  }
+
   const expiresAt = new Date(row.expires_at as string).getTime();
   if (Number.isNaN(expiresAt) || Date.now() > expiresAt) {
     await deleteOtpsForEmail(service, normalized);
@@ -472,8 +457,28 @@ export async function resetPasswordWithOtp(
   }
 
   const expectedHash = row.code_hash as string;
-  const providedHash = hashOtpCode(code, normalized);
+  let providedHash: string;
+  try {
+    providedHash = hashOtpCode(code, normalized);
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "OTP hashing is not configured.",
+    };
+  }
   if (!otpHashesMatch(expectedHash, providedHash)) {
+    const nextAttempts = attempts + 1;
+    if (nextAttempts >= OTP_MAX_ATTEMPTS) {
+      await deleteOtpsForEmail(service, normalized);
+      return {
+        success: false,
+        error: "Too many invalid attempts. Request a new verification code.",
+      };
+    }
+    await service
+      .from("password_reset_otps")
+      .update({ attempt_count: nextAttempts })
+      .eq("id", row.id as string);
     return { success: false, error: "Invalid verification code." };
   }
 

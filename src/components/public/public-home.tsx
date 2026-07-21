@@ -18,6 +18,7 @@ import type {
   WebsiteSettings,
 } from "@/types/database";
 import type { OfficeLocation } from "@/types/office-location";
+import type { HeroSlide } from "@/types/hero-slides";
 import { HomepageOrderedSections } from "@/components/public/homepage-ordered-sections";
 import { ShowroomTheme } from "@/components/public/showroom-theme";
 import { SiteHeader } from "@/components/public/site-header";
@@ -50,6 +51,7 @@ type PublicHomeProps = {
   gallery: GalleryItem[];
   testimonials: Testimonial[];
   office: OfficeLocation | null;
+  heroSlides?: HeroSlide[];
 };
 
 export function PublicHome({
@@ -61,6 +63,7 @@ export function PublicHome({
   gallery,
   testimonials,
   office,
+  heroSlides = [],
 }: PublicHomeProps) {
   const { locale, direction } = useDirection();
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
@@ -89,6 +92,7 @@ export function PublicHome({
           gallery={gallery}
           testimonials={testimonials}
           office={office}
+          heroSlides={heroSlides}
           activeCategoryId={activeCategoryId}
           onSelectCategory={setActiveCategoryId}
         />

@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
+import { hasDevSessionFromRequest } from "@/lib/auth/dev-session";
 import {
   getResolvedSupabasePublicEnv,
   hasSupabasePublicEnv,
@@ -33,6 +34,7 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 
 /**
  * Refresh Supabase auth cookies on every matched request (SSR session bridge).
+ * Also redirects unauthenticated users away from protected /admin dashboard paths.
  */
 export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -46,6 +48,8 @@ export async function updateSession(request: NextRequest) {
   if (!hasSupabasePublicEnv()) {
     return supabaseResponse;
   }
+
+  let userId: string | null = null;
 
   try {
     const resolved = getResolvedSupabasePublicEnv();
@@ -84,11 +88,35 @@ export async function updateSession(request: NextRequest) {
     });
 
     // getUser() validates JWT with Auth server and refreshes cookies when needed.
-    await withTimeout(supabase.auth.getUser(), SESSION_TIMEOUT_MS);
+    const {
+      data: { user },
+    } = await withTimeout(supabase.auth.getUser(), SESSION_TIMEOUT_MS);
+    userId = user?.id ?? null;
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Supabase session refresh failed";
     logSessionRefreshIssue(message);
+  }
+
+  const isProtectedAdmin =
+    pathname.startsWith("/admin") &&
+    !pathname.startsWith("/admin/setup") &&
+    !pathname.startsWith("/admin/forgot-password") &&
+    !pathname.startsWith("/admin/reset-password") &&
+    pathname !== "/admin/login";
+
+  if (isProtectedAdmin && !userId) {
+    // Dev-auth cookie is checked here; production always needs a session.
+    if (!hasDevSessionFromRequest(request)) {
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = "/login";
+      loginUrl.searchParams.set("next", pathname);
+      const redirect = NextResponse.redirect(loginUrl);
+      supabaseResponse.cookies.getAll().forEach((cookie) => {
+        redirect.cookies.set(cookie.name, cookie.value);
+      });
+      return redirect;
+    }
   }
 
   return supabaseResponse;

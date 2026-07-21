@@ -7,6 +7,7 @@ import { Menu, Phone } from "lucide-react";
 import { motion } from "@/lib/motion";
 
 import type { Locale } from "@/config/site";
+import { phoneTelHref } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import { getSidebarSide } from "@/lib/rtl";
 import type { WebsiteSettings } from "@/types/database";
@@ -14,6 +15,7 @@ import { LocaleSwitcher } from "@/components/public/locale-switcher";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Button } from "@/components/ui/button";
+import { PhoneText } from "@/components/ui/phone-link";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
@@ -39,6 +41,7 @@ export function SiteHeader({
   const companyName = settings?.company_name ?? "Nova Home Decor";
   const [scrolled, setScrolled] = useState(false);
   const sheetSide = getSidebarSide(direction);
+  const telHref = phoneTelHref(settings?.phone_number);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -117,11 +120,12 @@ export function SiteHeader({
         <div className="hidden items-center gap-2 md:flex">
           <LocaleSwitcher />
           <ThemeToggle />
-          {settings?.phone_number ? (
+          {telHref ? (
             <ButtonLink
               variant="outline"
               size="sm"
-              href={`tel:${settings.phone_number}`}
+              href={telHref}
+              dir="ltr"
               className={cn(
                 "rounded-[20px] border-current transition-all duration-500",
                 scrolled
@@ -129,8 +133,11 @@ export function SiteHeader({
                   : "border-[var(--hero-overlay-border)] text-[var(--hero-nav-fg)] hover:bg-[var(--hero-overlay-bg)] hover:text-[var(--hero-nav-fg)]",
               )}
             >
-              <Phone className="size-4" />
-              {t(locale, "common", "call_us")}
+              <Phone className="size-4 shrink-0" />
+              <span className="hidden xl:inline">
+                <PhoneText phone={settings?.phone_number} />
+              </span>
+              <span className="xl:hidden">{t(locale, "common", "call_us")}</span>
             </ButtonLink>
           ) : null}
         </div>
@@ -177,14 +184,15 @@ export function SiteHeader({
               <div className="mt-6 flex flex-col gap-3 border-t pt-6">
                 <LocaleSwitcher />
                 <ThemeToggle />
-                {settings?.phone_number ? (
+                {telHref ? (
                   <ButtonLink
                     variant="outline"
-                    href={`tel:${settings.phone_number}`}
+                    href={telHref}
+                    dir="ltr"
                     className="min-h-11 w-full justify-center rounded-[20px]"
                   >
-                    <Phone className="size-4" />
-                    {t(locale, "common", "call_us")}
+                    <Phone className="size-4 shrink-0" />
+                    <PhoneText phone={settings?.phone_number} />
                   </ButtonLink>
                 ) : null}
               </div>

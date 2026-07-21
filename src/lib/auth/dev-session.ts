@@ -3,27 +3,46 @@ import type { NextRequest } from "next/server";
 
 export const DEV_SESSION_COOKIE = "nova_dev_admin";
 
+function isCloudflareWorkersRuntime(): boolean {
+  return (
+    typeof globalThis !== "undefined" &&
+    "caches" in globalThis &&
+    typeof (globalThis as { caches?: { default?: unknown } }).caches
+      ?.default !== "undefined"
+  );
+}
+
+/**
+ * Cookie-based fake admin auth — localhost only.
+ * Never enable on Netlify / Vercel / Cloudflare / any public host.
+ */
 export function isDevAuthEnabled(): boolean {
   if (process.env.DEV_AUTH_ENABLED !== "true") return false;
   if (!process.env.DEV_ADMIN_EMAIL?.trim() || !process.env.DEV_ADMIN_PASSWORD?.trim()) {
     return false;
   }
 
-  // Never allow cookie-based fake admin auth on Netlify / production hosts.
   if (
     process.env.NETLIFY === "true" ||
     process.env.CF_PAGES === "1" ||
-    process.env.VERCEL === "1"
+    process.env.VERCEL === "1" ||
+    process.env.WORKERS_CI === "1" ||
+    isCloudflareWorkersRuntime()
   ) {
+    return false;
+  }
+
+  if (process.env.NODE_ENV === "production") {
     return false;
   }
 
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "").toLowerCase();
   const onLocalhost =
-    appUrl.includes("localhost") || appUrl.includes("127.0.0.1");
+    !appUrl ||
+    appUrl.includes("localhost") ||
+    appUrl.includes("127.0.0.1");
 
-  // Dev login on localhost (npm run dev or npm start locally)
-  return onLocalhost || process.env.NODE_ENV === "development";
+  return onLocalhost && process.env.NODE_ENV === "development";
 }
 
 export function validateDevCredentials(
@@ -39,6 +58,7 @@ export function validateDevCredentials(
 }
 
 export async function createDevSession(): Promise<void> {
+  if (!isDevAuthEnabled()) return;
   const cookieStore = await cookies();
   cookieStore.set(DEV_SESSION_COOKIE, "1", {
     httpOnly: true,

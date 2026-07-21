@@ -29,6 +29,7 @@ import {
   filterRegistry,
 } from "@/lib/content/registry";
 import { stripHtml } from "@/lib/i18n/cms-text";
+import { sanitizeRichHtml } from "@/lib/sanitize-html";
 import { t as dictT } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/config/site";
 import {
@@ -481,9 +482,10 @@ export function ContentManagementView({ initial }: ContentManagementViewProps) {
               <div
                 className="prose prose-sm dark:prose-invert max-w-none"
                 dangerouslySetInnerHTML={{
-                  __html:
+                  __html: sanitizeRichHtml(
                     activeValue ||
-                    `<p>${dictT(locale, activeEntry.dictSection as never, activeEntry.dictKey)}</p>`,
+                      `<p>${dictT(locale, activeEntry.dictSection as never, activeEntry.dictKey)}</p>`,
+                  ),
                 }}
               />
             ) : (

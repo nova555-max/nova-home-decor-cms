@@ -8,7 +8,9 @@ import { toast } from "sonner";
 import { updateWebsiteSettings } from "@/lib/actions/cms";
 import { DEFAULT_SHOWROOM_THEME } from "@/lib/constants";
 import type { EmailAddress, ShowroomThemeColors, WebsiteSettings } from "@/types/database";
+import type { HeroSlide } from "@/types/hero-slides";
 import { BrandingImageUpload } from "@/components/admin/branding-image-upload";
+import { HeroSliderManager } from "@/components/admin/hero-slider-manager";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { PhoneInputField } from "@/components/admin/phone-input";
 import { useAdminT } from "@/hooks";
@@ -33,6 +35,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 type SettingsFormProps = {
   settings: WebsiteSettings | null;
+  heroSlides?: HeroSlide[];
 };
 
 const THEME_KEYS = Object.keys(
@@ -73,7 +76,10 @@ function syncBrandingFromSettings(
 
 type FormState = ReturnType<typeof toFormState>;
 
-export function SettingsForm({ settings }: SettingsFormProps) {
+export function SettingsForm({
+  settings,
+  heroSlides = [],
+}: SettingsFormProps) {
   const t = useAdminT();
   const router = useRouter();
   const { runLocked, isLocked } = useSubmitLock({
@@ -178,15 +184,8 @@ export function SettingsForm({ settings }: SettingsFormProps) {
           <CardDescription>{t("settings.identity_desc")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <HeroSliderManager initial={heroSlides} embedded />
           <div className="grid gap-4 md:grid-cols-2">
-            <BrandingImageUpload
-              field="company_logo"
-              value={form.company_logo}
-              label={t("settings.company_logo")}
-              onSettingsUpdated={(updated) =>
-                syncBrandingFromSettings(updated, setForm)
-              }
-            />
             <BrandingImageUpload
               field="favicon_url"
               value={form.favicon_url}

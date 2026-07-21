@@ -1,3 +1,4 @@
+import { createPublicClient } from "@/lib/supabase/public";
 import type { ContentStringStore } from "@/types/content";
 import type {
   Category,
@@ -8,8 +9,6 @@ import type {
   WebsiteSettings,
 } from "@/types/database";
 import { buildDefaultContentStore } from "@/lib/content/registry";
-import { createServiceClient, getServiceRoleKey } from "@/lib/supabase/admin";
-import { createPublicClient } from "@/lib/supabase/public";
 import { DEFAULT_SECTION_VISIBILITY, DEFAULT_SHOWROOM_THEME } from "@/lib/constants";
 import {
   deriveLegacyVisibility,
@@ -21,7 +20,7 @@ export type AiCmsSnapshot = {
   categories: Category[];
   /** Published + active products for customer recommendations. */
   products: Product[];
-  /** All non-deleted products (includes drafts) for inventory counts. */
+  /** Alias of published products (drafts never loaded for public AI). */
   allProducts: Product[];
   projects: Project[];
   gallery: GalleryItem[];
@@ -40,28 +39,6 @@ function withSettingsDefaults(data: WebsiteSettings): WebsiteSettings {
       ...(data.theme_colors ?? {}),
     },
   };
-}
-
-function createAiSupabaseClient(): {
-  client: ReturnType<typeof createPublicClient>;
-  usedServiceRole: boolean;
-} {
-  const serviceKey = getServiceRoleKey();
-  if (serviceKey) {
-    try {
-      return { client: createServiceClient(), usedServiceRole: true };
-    } catch (error) {
-      console.error(
-        "[ai/cms] Failed to create service-role client, falling back to anon:",
-        error instanceof Error ? error.message : error,
-      );
-    }
-  } else {
-    console.warn(
-      "[ai/cms] SUPABASE_SERVICE_ROLE_KEY missing — AI will use anon client (RLS may hide rows).",
-    );
-  }
-  return { client: createPublicClient(), usedServiceRole: false };
 }
 
 async function safeQuery<T>(
@@ -87,21 +64,20 @@ async function safeQuery<T>(
 }
 
 /**
- * Loads CMS data for the AI assistant using SUPABASE_SERVICE_ROLE_KEY when available.
- * Never throws — logs errors and returns partial data.
+ * Loads published CMS data for the public AI assistant via the anon client (RLS).
+ * Never uses the service role — drafts and internal inventory stay private.
  */
 export async function loadCmsDataForAi(): Promise<AiCmsSnapshot> {
   const errors: string[] = [];
-  const { client, usedServiceRole } = createAiSupabaseClient();
+  const client = createPublicClient();
+  const usedServiceRole = false;
 
-  console.info(
-    `[ai/cms] Loading catalog via ${usedServiceRole ? "service role" : "anon"} client`,
-  );
+  console.info("[ai/cms] Loading catalog via anon client (published-only RLS)");
 
   const [
     settingsRow,
     categories,
-    allProducts,
+    publishedProducts,
     projects,
     gallery,
     contentRows,
@@ -133,6 +109,8 @@ export async function loadCmsDataForAi(): Promise<AiCmsSnapshot> {
           .from("products")
           .select("*, category:categories(*)")
           .is("deleted_at", null)
+          .eq("is_active", true)
+          .eq("status", "published")
           .order("sort_order"),
       [] as Product[],
       errors,
@@ -163,10 +141,16 @@ export async function loadCmsDataForAi(): Promise<AiCmsSnapshot> {
     ),
     safeQuery(
       "website_content_strings",
-      () =>
-        client
+      async () => {
+        const viaView = await client
+          .from("website_content_strings_public")
+          .select("content_key, published_value");
+        if (!viaView.error) return viaView;
+        return client
           .from("website_content_strings")
-          .select("content_key, published_value"),
+          .select("content_key, published_value")
+          .eq("status", "published");
+      },
       [] as Array<{ content_key: string; published_value: ContentStringStore[string] }>,
       errors,
     ),
@@ -183,16 +167,12 @@ export async function loadCmsDataForAi(): Promise<AiCmsSnapshot> {
     : null;
 
   const categoryMap = new Map(categories.map((c) => [c.id, c]));
-  const enrichedAll = (allProducts as Product[]).map((p) => ({
+  const products = (publishedProducts as Product[]).map((p) => ({
     ...p,
     category:
       p.category ??
       (p.category_id ? categoryMap.get(p.category_id) ?? null : null),
   }));
-
-  const products = enrichedAll.filter(
-    (p) => p.is_active && p.status === "published",
-  );
 
   let contentStore = buildDefaultContentStore();
   if (contentRows.length) {
@@ -228,7 +208,6 @@ export async function loadCmsDataForAi(): Promise<AiCmsSnapshot> {
     settings: !!settings,
     categories: categories.length,
     productsPublished: products.length,
-    productsTotal: enrichedAll.length,
     projects: projects.length,
     gallery: gallery.length,
     contentKeys: Object.keys(contentStore).length,
@@ -240,7 +219,7 @@ export async function loadCmsDataForAi(): Promise<AiCmsSnapshot> {
     settings,
     categories,
     products,
-    allProducts: enrichedAll,
+    allProducts: products,
     projects,
     gallery,
     contentStore,
@@ -254,7 +233,7 @@ export function isCmsCatalogEmpty(snapshot: AiCmsSnapshot): boolean {
   return (
     !snapshot.settings?.company_name &&
     snapshot.categories.length === 0 &&
-    snapshot.allProducts.length === 0 &&
+    snapshot.products.length === 0 &&
     snapshot.projects.length === 0 &&
     snapshot.gallery.length === 0
   );

@@ -80,38 +80,12 @@ export async function createEditor(formData: FormData): Promise<ActionResult> {
         };
       }
 
-      // Auth user exists without admin_users row — link and set password.
-      for (let page = 1; page <= 10; page += 1) {
-        const { data, error } = await service.auth.admin.listUsers({
-          page,
-          perPage: 200,
-        });
-        if (error) {
-          return { success: false, error: error.message };
-        }
-        const match = data.users.find(
-          (u) => u.email?.toLowerCase() === email,
-        );
-        if (match) {
-          authUserId = match.id;
-          break;
-        }
-        if (data.users.length < 200) break;
-      }
-      if (!authUserId) {
-        return {
-          success: false,
-          error:
-            "Auth user already exists but could not be found. Check Supabase → Authentication → Users.",
-        };
-      }
-      const { error: updateError } = await service.auth.admin.updateUserById(
-        authUserId,
-        { password, email_confirm: true },
-      );
-      if (updateError) {
-        return { success: false, error: updateError.message };
-      }
+      // Auth user already exists — never reset their password from CMS (account takeover risk).
+      return {
+        success: false,
+        error:
+          "This email already has a Supabase Auth account. Create the editor with a different email, or remove the Auth user first. Do not reuse HR/employee Auth accounts.",
+      };
     } else {
       authUserId = authData.user.id;
       createdNewAuthUser = true;

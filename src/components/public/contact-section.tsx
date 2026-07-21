@@ -1,16 +1,17 @@
 "use client";
 
-import { Clock, Mail, MessageCircle, Phone } from "lucide-react";
+import { Clock, Mail, MessageCircle } from "lucide-react";
 import { motion } from "@/lib/motion";
 
 import type { Locale } from "@/config/site";
-import { formatInternationalPhone, whatsappLink } from "@/lib/format";
+import { whatsappLink } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import { showroomText } from "@/lib/showroom/content";
 import type { HomepageContent, WebsiteSettings } from "@/types/database";
 import type { OfficeLocation } from "@/types/office-location";
 import { OfficeAddressDisplay } from "@/components/public/office-address-display";
 import { SectionHeading } from "@/components/public/showroom/section-heading";
+import { PhoneLinkList, PhoneText } from "@/components/ui/phone-link";
 import { cn } from "@/lib/utils";
 
 type ContactSectionProps = {
@@ -28,7 +29,6 @@ export function ContactSection({
 }: ContactSectionProps) {
   const contact = homepage?.contact?.[locale] ?? homepage?.contact?.ku;
   const waLink = whatsappLink(settings?.whatsapp_number);
-  const phoneDisplay = formatInternationalPhone(settings?.phone_number);
 
   return (
     <section id="contact" className="bg-muted/40 px-5 py-20 md:px-10 md:py-28 lg:px-14">
@@ -58,51 +58,44 @@ export function ContactSection({
                 {t(locale, "footer", "contact")}
               </h3>
 
-              <ul className="space-y-4 text-sm">
-                {settings?.phone_number ? (
-                  <li>
-                    <a
-                      href={`tel:${settings.phone_number}`}
-                      className="inline-flex items-center gap-3 transition hover:text-[var(--gold)]"
-                    >
-                      <Phone className="size-4 shrink-0 text-[var(--gold)]" />
-                      {phoneDisplay}
-                    </a>
-                  </li>
-                ) : null}
+              <div className="space-y-4 text-sm">
+                <PhoneLinkList
+                  fields={[settings?.phone_number]}
+                  className="space-y-4"
+                  iconClassName="text-[var(--gold)] opacity-100"
+                />
 
                 {settings?.email_addresses?.map((entry) => (
-                  <li key={entry.id}>
-                    <a
-                      href={`mailto:${entry.email}`}
-                      className="inline-flex items-center gap-3 transition hover:text-[var(--gold)]"
-                    >
-                      <Mail className="size-4 shrink-0 text-[var(--gold)]" />
-                      {entry.label ? `${entry.label}: ` : ""}
-                      {entry.email}
-                    </a>
-                  </li>
+                  <a
+                    key={entry.id}
+                    href={`mailto:${entry.email}`}
+                    className="flex items-center gap-3 transition hover:text-[var(--gold)]"
+                  >
+                    <Mail className="size-4 shrink-0 text-[var(--gold)]" />
+                    {entry.label ? `${entry.label}: ` : ""}
+                    {entry.email}
+                  </a>
                 ))}
 
                 {waLink ? (
-                  <li>
-                    <a
-                      href={waLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-3 transition hover:text-[var(--gold)]"
-                    >
-                      <MessageCircle className="size-4 shrink-0 text-[var(--gold)]" />
-                      {t(locale, "common", "whatsapp")}
-                      {settings?.whatsapp_number ? (
-                        <span className="text-muted-foreground">
-                          · {formatInternationalPhone(settings.whatsapp_number)}
-                        </span>
-                      ) : null}
-                    </a>
-                  </li>
+                  <a
+                    href={waLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    dir="ltr"
+                    className="inline-flex items-center gap-2.5 transition hover:text-[var(--gold)]"
+                    style={{ unicodeBidi: "plaintext" }}
+                  >
+                    <MessageCircle className="size-4 shrink-0 text-[var(--gold)]" />
+                    <span>{t(locale, "common", "whatsapp")}</span>
+                    {settings?.whatsapp_number ? (
+                      <span className="text-muted-foreground">
+                        · <PhoneText phone={settings.whatsapp_number} />
+                      </span>
+                    ) : null}
+                  </a>
                 ) : null}
-              </ul>
+              </div>
             </div>
 
             <div className="showroom-card border border-border bg-card p-8">

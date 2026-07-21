@@ -32,6 +32,7 @@ import type { AiChatMeta, ChatMessage } from "@/lib/ai/types";
 import type { AiConsultantModule, CmsProductCard } from "@/lib/ai/search/types";
 import { t } from "@/lib/i18n";
 import { coerceToText } from "@/lib/i18n/cms-text";
+import { formatInternationalPhone } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useDirection } from "@/hooks";
 
@@ -223,8 +224,13 @@ function QuotePrintPanel({
       <div ref={printRef} className="quote-print-root">
         <h1>{t(locale, "ai", "quote_title")}</h1>
         {companyInfo ? (
-          <p className="muted">
-            {[companyInfo.name, companyInfo.phone, companyInfo.whatsapp, companyInfo.address]
+          <p className="muted" dir="ltr" style={{ unicodeBidi: "plaintext" }}>
+            {[
+              companyInfo.name,
+              formatInternationalPhone(companyInfo.phone),
+              formatInternationalPhone(companyInfo.whatsapp),
+              companyInfo.address,
+            ]
               .filter(Boolean)
               .join(" · ")}
           </p>

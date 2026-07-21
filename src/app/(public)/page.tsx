@@ -9,6 +9,7 @@ import {
   getWebsiteSettings,
 } from "@/lib/queries/cms";
 import { getActiveOfficeLocation } from "@/lib/queries/office-location";
+import { getPublicHeroSlides } from "@/lib/queries/hero-slides";
 
 export const revalidate = 60;
 
@@ -22,6 +23,7 @@ export default async function HomePage() {
     gallery,
     testimonials,
     office,
+    heroSlides,
   ] = await Promise.all([
     getWebsiteSettings(),
     getHomepageContent(),
@@ -31,6 +33,7 @@ export default async function HomePage() {
     getPublicGallery(),
     getPublicTestimonials(),
     getActiveOfficeLocation(),
+    getPublicHeroSlides(),
   ]);
 
   return (
@@ -43,6 +46,7 @@ export default async function HomePage() {
       gallery={gallery}
       testimonials={testimonials}
       office={office}
+      heroSlides={heroSlides}
     />
   );
 }

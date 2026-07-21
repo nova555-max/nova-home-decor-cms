@@ -1,16 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { MessageCircle, Phone, Share2 } from "lucide-react";
+import { MessageCircle, Share2 } from "lucide-react";
 import { toast } from "sonner";
 
 import type { Locale } from "@/config/site";
-import { formatInternationalPhone, whatsappLink } from "@/lib/format";
+import { whatsappLink } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import type { WebsiteSettings } from "@/types/database";
 import type { OfficeLocation } from "@/types/office-location";
 import { OfficeAddressDisplay } from "@/components/public/office-address-display";
 import { LuxuryButton } from "@/components/public/showroom/luxury-button";
+import { PhoneLinkList } from "@/components/ui/phone-link";
 import { Input } from "@/components/ui/input";
 
 type SiteFooterProps = {
@@ -24,8 +25,6 @@ export function SiteFooter({ settings, locale, office }: SiteFooterProps) {
   const waLink = whatsappLink(settings?.whatsapp_number);
   const year = new Date().getFullYear();
   const [email, setEmail] = useState("");
-
-  const phoneDisplay = formatInternationalPhone(settings?.phone_number);
 
   const subscribe = (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,20 +56,14 @@ export function SiteFooter({ settings, locale, office }: SiteFooterProps) {
             <h4 className="text-showroom-accent mb-5 text-xs tracking-[0.28em] uppercase">
               {t(locale, "footer", "contact")}
             </h4>
-            <ul className="space-y-3 text-sm text-foreground">
-              {settings?.phone_number ? (
-                <li>
-                  <a
-                    href={`tel:${settings.phone_number}`}
-                    className="inline-flex items-center gap-3 transition hover:text-[var(--gold)]"
-                  >
-                    <Phone className="size-4 shrink-0 opacity-60" />
-                    {phoneDisplay}
-                  </a>
-                </li>
-              ) : null}
+            <div className="space-y-3 text-sm text-foreground">
+              <PhoneLinkList
+                fields={[settings?.phone_number]}
+                className="space-y-3"
+                itemClassName="text-sm text-foreground"
+              />
               {settings?.email_addresses?.map((entry) => (
-                <li key={entry.id}>
+                <div key={entry.id}>
                   <a
                     href={`mailto:${entry.email}`}
                     className="transition hover:text-[var(--gold)]"
@@ -78,22 +71,22 @@ export function SiteFooter({ settings, locale, office }: SiteFooterProps) {
                     {entry.label ? `${entry.label}: ` : ""}
                     {entry.email}
                   </a>
-                </li>
+                </div>
               ))}
               {waLink ? (
-                <li>
-                  <a
-                    href={waLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-3 transition hover:text-[var(--gold)]"
-                  >
-                    <MessageCircle className="size-4 shrink-0 opacity-60" />
-                    {t(locale, "common", "whatsapp")}
-                  </a>
-                </li>
+                <a
+                  href={waLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  dir="ltr"
+                  className="inline-flex items-center gap-2.5 transition hover:text-[var(--gold)]"
+                  style={{ unicodeBidi: "plaintext" }}
+                >
+                  <MessageCircle className="size-4 shrink-0 opacity-60" />
+                  <span className="whitespace-nowrap">{t(locale, "common", "whatsapp")}</span>
+                </a>
               ) : null}
-            </ul>
+            </div>
           </div>
 
           <div className="lg:col-span-2">
@@ -179,7 +172,6 @@ export function SiteFooter({ settings, locale, office }: SiteFooterProps) {
         </div>
       </div>
 
-      {/* Platform-locked bar — not editable via CMS */}
       <div className="border-t border-border px-5 py-6 text-center md:px-10 lg:px-14">
         <p className="text-muted-foreground text-xs tracking-wide">
           © {year} Nova Home Decor. {t(locale, "footer", "rights")}.

@@ -1,7 +1,6 @@
 "use client";
 
-import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { useScroll, useTransform } from "framer-motion";
 import { motion } from "@/lib/motion";
@@ -17,7 +16,9 @@ import type {
   Product,
   WebsiteSettings,
 } from "@/types/database";
+import type { HeroSlide } from "@/types/hero-slides";
 import { HeroProductGallery } from "@/components/public/showroom/hero-product-gallery";
+import { HeroSlider } from "@/components/public/hero-slider";
 import { ButtonLink } from "@/components/ui/button-link";
 import { cn } from "@/lib/utils";
 
@@ -27,22 +28,33 @@ type HeroSectionProps = {
   locale: Locale;
   categories: Category[];
   products: Product[];
+  heroSlides?: HeroSlide[];
 };
 
-function isVideoUrl(url: string) {
-  return /\.(mp4|webm|mov)(\?|$)/i.test(url);
-}
-
-function resolveHeroMediaUrls(
+function legacyFallbackSlides(
   hero: HeroContent | undefined,
   settings: WebsiteSettings | null,
-): string[] {
-  const fromList = (hero?.images ?? []).filter(Boolean).slice(0, 8);
-  if (fromList.length > 0) return fromList;
-  if (hero?.image_url) return [hero.image_url];
-  if (settings?.og_image) return [settings.og_image];
-  if (settings?.company_logo) return [settings.company_logo];
-  return [];
+): HeroSlide[] {
+  const urls = [
+    ...(hero?.images ?? []).filter(Boolean).slice(0, 8),
+    ...(hero?.image_url ? [hero.image_url] : []),
+    ...(settings?.og_image ? [settings.og_image] : []),
+  ].filter((url, index, all) => all.indexOf(url) === index);
+
+  return urls.map((url, index) => ({
+    id: `legacy-${index}`,
+    image_url: url,
+    title: null,
+    subtitle: null,
+    button_text: null,
+    button_link: null,
+    display_order: index,
+    is_active: true,
+    starts_at: null,
+    ends_at: null,
+    created_at: "",
+    updated_at: "",
+  }));
 }
 
 export function HeroSection({
@@ -51,6 +63,7 @@ export function HeroSection({
   locale,
   categories,
   products,
+  heroSlides = [],
 }: HeroSectionProps) {
   const sectionRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({
@@ -61,32 +74,31 @@ export function HeroSection({
 
   const hero = homepage?.hero?.[locale] ?? homepage?.hero?.ku;
   const companyName = settings?.company_name ?? "Nova Home Decor";
-  const mediaUrls = useMemo(
-    () => resolveHeroMediaUrls(hero, settings),
-    [hero, settings],
+
+  const slides = useMemo(() => {
+    if (heroSlides.length > 0) return heroSlides;
+    return legacyFallbackSlides(hero, settings);
+  }, [hero, heroSlides, settings]);
+
+  const [activeSlide, setActiveSlide] = useState<HeroSlide | null>(
+    slides[0] ?? null,
   );
-  const [activeIndex, setActiveIndex] = useState(0);
-  const mediaUrl = mediaUrls[activeIndex] ?? null;
-  const isVideo = mediaUrl ? isVideoUrl(mediaUrl) : false;
 
-  useEffect(() => {
-    setActiveIndex(0);
-  }, [mediaUrls]);
-
-  useEffect(() => {
-    if (mediaUrls.length <= 1 || isVideo) return;
-    const id = window.setInterval(() => {
-      setActiveIndex((prev) => (prev + 1) % mediaUrls.length);
-    }, 6000);
-    return () => window.clearInterval(id);
-  }, [mediaUrls, isVideo]);
-
-  const title = hero?.title || companyName;
-  const subtitle = hero?.subtitle || t(locale, "hero", "subtitle");
+  const title =
+    activeSlide?.title || hero?.title || companyName;
+  const subtitle =
+    activeSlide?.subtitle || hero?.subtitle || t(locale, "hero", "subtitle");
   const description = showroomText(
     hero?.description,
     t(locale, "hero", "description"),
   );
+  const primaryCta =
+    activeSlide?.button_text && activeSlide.button_link
+      ? { label: activeSlide.button_text, href: activeSlide.button_link }
+      : {
+          label: hero?.cta_secondary || t(locale, "hero", "cta_products"),
+          href: "#products",
+        };
 
   const hasGallery = useMemo(
     () => resolveHeroShowcaseProducts(products).length > 0,
@@ -100,36 +112,17 @@ export function HeroSection({
       className="relative flex min-h-[100svh] w-full items-center overflow-hidden bg-background"
       aria-label={companyName}
     >
-      <motion.div style={{ y: backgroundY }} className="absolute inset-0 -top-[10%] h-[120%]">
-        {mediaUrls.length === 0 ? (
-          <div className="hero-fallback-gradient absolute inset-0" />
-        ) : isVideo && mediaUrl ? (
-          <video
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="size-full object-cover"
-            poster={settings?.og_image ?? undefined}
-          >
-            <source src={mediaUrl} />
-          </video>
-        ) : (
-          mediaUrls.map((url, index) => (
-            <Image
-              key={url}
-              src={url}
-              alt={title}
-              fill
-              priority={index === 0}
-              className={cn(
-                "object-cover transition-opacity duration-1000",
-                index === activeIndex ? "opacity-100" : "opacity-0",
-              )}
-              sizes="100vw"
-            />
-          ))
-        )}
+      <motion.div
+        style={{ y: backgroundY }}
+        className="absolute inset-0 -top-[10%] h-[120%]"
+      >
+        <HeroSlider
+          slides={slides}
+          mediaOnly
+          showControls={slides.length > 1}
+          aspectClassName="absolute inset-0 min-h-full"
+          onActiveChange={(_, slide) => setActiveSlide(slide)}
+        />
       </motion.div>
 
       <div className="absolute inset-0 bg-primary/25" />
@@ -146,7 +139,10 @@ export function HeroSection({
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-          className={cn("max-w-xl", hasGallery ? "lg:max-w-none" : "mx-auto text-center lg:mx-auto")}
+          className={cn(
+            "max-w-xl",
+            hasGallery ? "lg:max-w-none" : "mx-auto text-center lg:mx-auto",
+          )}
         >
           <motion.p
             initial={{ opacity: 0, y: 16 }}
@@ -158,18 +154,20 @@ export function HeroSection({
           </motion.p>
 
           <motion.h1
+            key={title}
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.85, delay: 0.18 }}
+            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
             className="font-display text-[clamp(2.5rem,2rem+3.5vw,4.75rem)] leading-[1.04] font-medium tracking-tight text-[var(--hero-overlay-fg)] drop-shadow-[0_2px_24px_rgb(47_47_47_/_0.35)]"
           >
             {title}
           </motion.h1>
 
           <motion.p
+            key={subtitle}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.28 }}
+            transition={{ duration: 0.8, delay: 0.08 }}
             className="mt-5 text-lg leading-snug font-medium text-[var(--hero-overlay-fg)]/95 md:text-xl"
           >
             {subtitle}
@@ -178,7 +176,7 @@ export function HeroSection({
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.36 }}
+            transition={{ duration: 0.8, delay: 0.16 }}
             className={cn(
               "mt-4 text-base leading-relaxed text-[var(--hero-overlay-fg)]/80 md:text-[1.05rem]",
               !hasGallery && "mx-auto max-w-2xl",
@@ -191,19 +189,19 @@ export function HeroSection({
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.44 }}
+            transition={{ duration: 0.8, delay: 0.24 }}
             className={cn(
               "mt-10 flex flex-wrap gap-3 md:gap-4",
               !hasGallery && "justify-center",
             )}
           >
             <ButtonLink
-              href="#products"
+              href={primaryCta.href}
               variant="gold"
               size="lg"
               className="rounded-[20px] px-8 shadow-soft transition-all duration-300 hover:scale-[1.03] hover:shadow-soft-lg active:scale-[0.98]"
             >
-              {hero?.cta_secondary || t(locale, "hero", "cta_products")}
+              {primaryCta.label}
             </ButtonLink>
             <ButtonLink
               href="#contact-info"
@@ -236,25 +234,6 @@ export function HeroSection({
           </motion.div>
         ) : null}
       </div>
-
-      {mediaUrls.length > 1 && !isVideo ? (
-        <div className="absolute bottom-20 start-1/2 z-10 flex -translate-x-1/2 gap-2">
-          {mediaUrls.map((url, index) => (
-            <button
-              key={url}
-              type="button"
-              aria-label={`${index + 1}`}
-              onClick={() => setActiveIndex(index)}
-              className={cn(
-                "size-2 rounded-full transition-all",
-                index === activeIndex
-                  ? "bg-[var(--hero-overlay-fg)] scale-110"
-                  : "bg-[var(--hero-overlay-fg)]/40 hover:bg-[var(--hero-overlay-fg)]/70",
-              )}
-            />
-          ))}
-        </div>
-      ) : null}
 
       <motion.a
         href="#stats"

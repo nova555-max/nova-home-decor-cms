@@ -152,14 +152,30 @@ async function fetchContentRows(): Promise<ContentRow[]> {
   const supabase = createPublicClient();
   return withTimeoutFallback(
     (async () => {
-      const { data, error } = await supabase
-        .from("website_content_strings")
+      const viaView = await supabase
+        .from("website_content_strings_public")
         .select(
-          "id, content_key, draft_value, published_value, version, status, published_at, versions, updated_at",
+          "id, content_key, published_value, version, status, published_at, updated_at",
         );
 
-      if (error || !data?.length) return [];
-      return data as ContentRow[];
+      const rows =
+        !viaView.error && viaView.data?.length
+          ? viaView.data
+          : (
+              await supabase
+                .from("website_content_strings")
+                .select(
+                  "id, content_key, published_value, version, status, published_at, updated_at",
+                )
+                .eq("status", "published")
+            ).data;
+
+      if (!rows?.length) return [];
+      return rows.map((row) => ({
+        ...row,
+        draft_value: row.published_value ?? {},
+        versions: [],
+      })) as ContentRow[];
     })(),
     STARTUP_QUERY_TIMEOUT_MS,
     [],

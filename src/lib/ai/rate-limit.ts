@@ -1,5 +1,5 @@
 const WINDOW_MS = 60_000;
-const MAX_REQUESTS = 20;
+const MAX_REQUESTS = 12;
 const MAX_BUCKETS = 5_000;
 
 type Entry = { count: number; resetAt: number };
@@ -53,13 +53,12 @@ function isLikelyIp(value: string): boolean {
   return IPV4_RE.test(value) || (value.includes(":") && IPV6_RE.test(value));
 }
 
-/** Prefer platform client IP headers (Netlify / Cloudflare / proxies). */
+/** Prefer platform client IP headers (Netlify / Cloudflare). Do not trust raw x-forwarded-for alone. */
 export function getClientKey(request: Request): string {
   const candidates = [
     request.headers.get("x-nf-client-connection-ip")?.trim(),
     request.headers.get("cf-connecting-ip")?.trim(),
     request.headers.get("x-real-ip")?.trim(),
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim(),
   ];
 
   for (const candidate of candidates) {
@@ -68,5 +67,12 @@ export function getClientKey(request: Request): string {
     }
   }
 
-  return "anonymous";
+  // Last resort: first XFF hop only when a platform IP header was absent.
+  const xff = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  if (xff && isLikelyIp(xff)) {
+    return `xff:${xff}`;
+  }
+
+  const ua = request.headers.get("user-agent")?.slice(0, 80) ?? "unknown";
+  return `ua:${ua}`;
 }

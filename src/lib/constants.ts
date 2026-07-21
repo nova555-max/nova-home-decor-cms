@@ -12,6 +12,7 @@ export const CACHE_TAGS = {
   media: "media-assets",
   content: "website-content-strings",
   office: "office-location",
+  heroSlides: "hero-slides",
 } as const;
 
 export const REALTIME_TABLES = [
@@ -24,11 +25,13 @@ export const REALTIME_TABLES = [
   "gallery_items",
   "media_assets",
   "website_content_strings",
+  "hero_slides",
 ] as const;
 
 export const ADMIN_NAV = [
   { titleKey: "dashboard", href: "/admin", icon: "LayoutDashboard" },
   { titleKey: "homepage", href: "/admin/homepage", icon: "Home" },
+  { titleKey: "hero_slider", href: "/admin/hero-slider", icon: "Images" },
   { titleKey: "section_visibility", href: "/admin/section-visibility", icon: "LayoutList" },
   { titleKey: "office_location", href: "/admin/office-location", icon: "MapPin" },
   { titleKey: "content", href: "/admin/content", icon: "FileText" },

@@ -129,7 +129,7 @@ function buildCatalogSummary(
   snapshot: Awaited<ReturnType<typeof loadCmsDataForAi>>,
 ): string[] {
   const lines: string[] = [
-    `Inventory: ${snapshot.products.length} published products (${snapshot.allProducts.length} total including drafts)`,
+    `Inventory: ${snapshot.products.length} published products`,
     `Categories: ${snapshot.categories.length}`,
     `Projects: ${snapshot.projects.length}`,
     `Gallery items: ${snapshot.gallery.length}`,
@@ -143,12 +143,8 @@ function buildCatalogSummary(
     );
   }
 
-  if (snapshot.products.length === 0 && snapshot.allProducts.length === 0) {
-    lines.push("Product catalog: no product records exist yet.");
-  } else if (snapshot.products.length === 0) {
-    lines.push(
-      "Product catalog: products exist but none are published/active for the public site.",
-    );
+  if (snapshot.products.length === 0) {
+    lines.push("Product catalog: no published products available.");
   }
 
   return lines;
@@ -194,10 +190,7 @@ export async function searchCms(input: SearchInput): Promise<CmsSearchResult> {
   ];
   const homepageMatches = searchHomepageContent(homepage, locale, query);
 
-  const availableProducts =
-    filters.availability === "all"
-      ? snapshot.allProducts.filter((p) => p.is_active)
-      : products;
+  const availableProducts = products;
 
   let scoredProducts = availableProducts
     .map((p) => scoreProduct(p, locale, query, filters))

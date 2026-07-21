@@ -1,10 +1,30 @@
 import { NextResponse } from "next/server";
 
+import { checkRateLimit, getClientKey } from "@/lib/ai/rate-limit";
 import { parseNominatimAddress } from "@/lib/office-location";
+import { getAdminContext } from "@/lib/supabase/auth";
 
 const NOMINATIM_REVERSE = "https://nominatim.openstreetmap.org/reverse";
 
 export async function GET(request: Request) {
+  const admin = await getAdminContext();
+  if (!admin) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const limit = checkRateLimit(`geocode:${getClientKey(request)}`);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      {
+        status: 429,
+        headers: limit.retryAfterMs
+          ? { "Retry-After": String(Math.ceil(limit.retryAfterMs / 1000)) }
+          : undefined,
+      },
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const lat = searchParams.get("lat");
   const lng = searchParams.get("lng");

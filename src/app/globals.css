@@ -457,6 +457,26 @@
     text-align: start;
   }
 
+  /*
+   * Phone / tel links must never inherit RTL digit reordering.
+   * Use on every visible phone number (footer, contact, header, admin).
+   */
+  .phone-ltr,
+  .phone-ltr bdi,
+  .phone-ltr span {
+    direction: ltr !important;
+    unicode-bidi: isolate !important;
+    text-align: left !important;
+  }
+
+  a.phone-ltr {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.625rem;
+    white-space: nowrap;
+  }
+
   /* ── Luxury Showroom (public site) ── */
   [data-showroom] {
     --showroom-primary: #2f2f2f;
