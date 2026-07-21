@@ -60,7 +60,9 @@ export function LoginForm({
         window.location.assign("/admin");
         return;
       }
-      toast.error(result.error);
+      toast.error(result.error, {
+        classNames: { toast: "dir-ltr text-left" },
+      });
     });
   };
 

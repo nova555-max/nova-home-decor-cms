@@ -58,8 +58,9 @@ function explainSupabaseAuthError(message: string): string {
       );
     }
     return (
-      "Invalid email or password. Confirm the user exists in Supabase → Authentication → Users " +
-      "for project zfsoeketfjnnpirglosq, or reset the password / use /admin/setup on a fresh project."
+      "Invalid email or password for this Supabase project. " +
+      "Use the password you set, or open Forgot password. " +
+      "If Netlify still points at an old project, update NEXT_PUBLIC_SUPABASE_URL to zfsoeketfjnnpirglosq and redeploy."
     );
   }
   if (/Email not confirmed/i.test(message)) {
