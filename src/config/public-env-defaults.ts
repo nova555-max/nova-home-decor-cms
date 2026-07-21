@@ -5,11 +5,14 @@
  *
  * Anon / publishable keys are safe to embed — they are public by design (RLS protects data).
  * Never put SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY, or GEMINI_API_KEY here.
+ *
+ * Active project: zfsoeketfjnnpirglosq (admin_users + Auth users live here).
+ * Prefer the legacy anon JWT for Auth/Realtime reliability on Netlify.
  */
 export const PUBLIC_ENV_DEFAULTS = {
-  NEXT_PUBLIC_SUPABASE_URL: "https://pdmsbboxhfpexklkqvqr.supabase.co",
+  NEXT_PUBLIC_SUPABASE_URL: "https://zfsoeketfjnnpirglosq.supabase.co",
   NEXT_PUBLIC_SUPABASE_ANON_KEY:
-    "sb_publishable_oj0uEtmgE0STtXKeGYcQtA_EOWiu02-",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpmc29la2V0ZmpubnBpcmdsb3NxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NjI1NjAsImV4cCI6MjA5OTUzODU2MH0.1bpzOD3aOGz88h-C_pPtUopWPcMYW3b2OxR2t-ioc40",
   // Prefer setting NEXT_PUBLIC_APP_URL in Netlify UI to your real *.netlify.app URL.
   NEXT_PUBLIC_APP_URL: "http://localhost:3000",
   NEXT_PUBLIC_DEFAULT_LOCALE: "ku" as const,

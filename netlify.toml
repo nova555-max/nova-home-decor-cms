@@ -12,8 +12,8 @@
   NODE_VERSION = "20"
   NEXT_TELEMETRY_DISABLED = "1"
   # Public defaults (override NEXT_PUBLIC_APP_URL in Netlify UI to your real site URL)
-  NEXT_PUBLIC_SUPABASE_URL = "https://pdmsbboxhfpexklkqvqr.supabase.co"
-  NEXT_PUBLIC_SUPABASE_ANON_KEY = "sb_publishable_oj0uEtmgE0STtXKeGYcQtA_EOWiu02-"
+  NEXT_PUBLIC_SUPABASE_URL = "https://zfsoeketfjnnpirglosq.supabase.co"
+  NEXT_PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpmc29la2V0ZmpubnBpcmdsb3NxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NjI1NjAsImV4cCI6MjA5OTUzODU2MH0.1bpzOD3aOGz88h-C_pPtUopWPcMYW3b2OxR2t-ioc40"
   NEXT_PUBLIC_DEFAULT_LOCALE = "ku"
   SUPER_ADMIN_EMAIL = "novahome756@gmail.com"
   RESEND_FROM_EMAIL = "Nova Home Decor <onboarding@resend.dev>"

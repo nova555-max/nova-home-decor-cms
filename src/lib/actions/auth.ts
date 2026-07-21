@@ -43,12 +43,24 @@ function explainSupabaseAuthError(message: string): string {
     return (
       "Invalid API key — NEXT_PUBLIC_SUPABASE_ANON_KEY (or PUBLISHABLE_KEY) is wrong for this project, " +
       "or NEXT_PUBLIC_SUPABASE_URL points to a different Supabase project. " +
+      "Use project zfsoeketfjnnpirglosq (same as your admin_users data). " +
       "Fix both in Netlify → Environment variables (Builds + Functions), then redeploy. Original: " +
       message
     );
   }
   if (/Invalid login credentials/i.test(message)) {
-    return "Invalid email or password.";
+    const snap = getRuntimeEnvSnapshot();
+    const url = snap.NEXT_PUBLIC_SUPABASE_URL ?? "";
+    if (url && !url.includes("zfsoeketfjnnpirglosq")) {
+      return (
+        "Invalid email or password — and NEXT_PUBLIC_SUPABASE_URL is not the project that holds your users " +
+        `(current: ${url}). Set it to https://zfsoeketfjnnpirglosq.supabase.co with matching anon + service keys, then redeploy.`
+      );
+    }
+    return (
+      "Invalid email or password. Confirm the user exists in Supabase → Authentication → Users " +
+      "for project zfsoeketfjnnpirglosq, or reset the password / use /admin/setup on a fresh project."
+    );
   }
   if (/Email not confirmed/i.test(message)) {
     return "Email is not confirmed in Supabase Auth. Confirm the user in Supabase → Authentication → Users.";

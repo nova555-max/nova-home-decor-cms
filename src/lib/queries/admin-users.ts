@@ -91,18 +91,39 @@ export async function getAdminUserByEmail(
 }
 
 export async function listEditorUsers(): Promise<AdminUser[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("admin_users")
-    .select("*")
-    .eq("role", "editor")
-    .order("created_at", { ascending: false });
+  // Service role avoids intermittent RLS misses when listing editors in admin UI.
+  try {
+    const service = createServiceClient();
+    const { data, error } = await service
+      .from("admin_users")
+      .select("*")
+      .eq("role", "editor")
+      .order("created_at", { ascending: false });
 
-  if (error) throw new Error(error.message);
-  return (data ?? []).map((row) => ({
-    ...row,
-    permissions: normalizePermissions(row.permissions),
-  })) as AdminUser[];
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((row) => ({
+      ...row,
+      permissions: normalizePermissions(row.permissions),
+    })) as AdminUser[];
+  } catch (serviceErr) {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("admin_users")
+      .select("*")
+      .eq("role", "editor")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      throw new Error(
+        error.message ||
+          (serviceErr instanceof Error ? serviceErr.message : "list editors failed"),
+      );
+    }
+    return (data ?? []).map((row) => ({
+      ...row,
+      permissions: normalizePermissions(row.permissions),
+    })) as AdminUser[];
+  }
 }
 
 /** Count of lifetime administrator (super_admin) rows — active or not. */

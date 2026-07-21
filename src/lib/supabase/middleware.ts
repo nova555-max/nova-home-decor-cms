@@ -54,6 +54,13 @@ export async function updateSession(request: NextRequest) {
     }
 
     const supabase = createServerClient(resolved.url, resolved.anonKey, {
+      cookieOptions: withAuthCookieOptions(),
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        flowType: "pkce",
+      },
       cookies: {
         getAll() {
           return request.cookies.getAll();

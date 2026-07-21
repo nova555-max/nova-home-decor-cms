@@ -57,6 +57,9 @@ export async function createEditor(formData: FormData): Promise<ActionResult> {
   try {
     const service = createServiceClient();
 
+    let authUserId: string | null = null;
+    let createdNewAuthUser = false;
+
     const { data: authData, error: authError } =
       await service.auth.admin.createUser({
         email,
@@ -65,15 +68,58 @@ export async function createEditor(formData: FormData): Promise<ActionResult> {
       });
 
     if (authError || !authData.user) {
-      return {
-        success: false,
-        error: authError?.message ?? "Could not create auth user.",
-      };
+      const already =
+        authError &&
+        /already.*(registered|exists)|duplicate|User already/i.test(
+          authError.message,
+        );
+      if (!already) {
+        return {
+          success: false,
+          error: authError?.message ?? "Could not create auth user.",
+        };
+      }
+
+      // Auth user exists without admin_users row — link and set password.
+      for (let page = 1; page <= 10; page += 1) {
+        const { data, error } = await service.auth.admin.listUsers({
+          page,
+          perPage: 200,
+        });
+        if (error) {
+          return { success: false, error: error.message };
+        }
+        const match = data.users.find(
+          (u) => u.email?.toLowerCase() === email,
+        );
+        if (match) {
+          authUserId = match.id;
+          break;
+        }
+        if (data.users.length < 200) break;
+      }
+      if (!authUserId) {
+        return {
+          success: false,
+          error:
+            "Auth user already exists but could not be found. Check Supabase → Authentication → Users.",
+        };
+      }
+      const { error: updateError } = await service.auth.admin.updateUserById(
+        authUserId,
+        { password, email_confirm: true },
+      );
+      if (updateError) {
+        return { success: false, error: updateError.message };
+      }
+    } else {
+      authUserId = authData.user.id;
+      createdNewAuthUser = true;
     }
 
     // Employees are always editors — never super_admin.
     const { error: profileError } = await service.from("admin_users").insert({
-      auth_user_id: authData.user.id,
+      auth_user_id: authUserId,
       email,
       role: "editor",
       permissions,
@@ -82,7 +128,9 @@ export async function createEditor(formData: FormData): Promise<ActionResult> {
     });
 
     if (profileError) {
-      await service.auth.admin.deleteUser(authData.user.id);
+      if (createdNewAuthUser && authUserId) {
+        await service.auth.admin.deleteUser(authUserId);
+      }
       return { success: false, error: profileError.message };
     }
 

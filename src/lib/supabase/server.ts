@@ -9,6 +9,13 @@ export async function createClient() {
   const { url, anonKey } = requireSupabasePublicEnv();
 
   return createServerClient(url, anonKey, {
+    cookieOptions: withAuthCookieOptions(),
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      flowType: "pkce",
+    },
     cookies: {
       getAll() {
         return cookieStore.getAll();

@@ -30,9 +30,32 @@ export async function getAdministratorRegistrationStatus(): Promise<Administrato
   }
 }
 
+async function findAuthUserIdByEmail(
+  service: ReturnType<typeof createServiceClient>,
+  email: string,
+): Promise<string | null> {
+  for (let page = 1; page <= 10; page += 1) {
+    const { data, error } = await service.auth.admin.listUsers({
+      page,
+      perPage: 200,
+    });
+    if (error) {
+      console.error("[createFirstAdministrator] listUsers", error.message);
+      return null;
+    }
+    const match = data.users.find(
+      (u) => u.email?.toLowerCase() === email.toLowerCase(),
+    );
+    if (match) return match.id;
+    if (data.users.length < 200) break;
+  }
+  return null;
+}
+
 /**
  * First-install only: create the single lifetime administrator.
  * Permanently rejected once any super_admin row exists.
+ * If Auth user already exists (partial prior install), links/updates it.
  */
 export async function createFirstAdministrator(
   email: string,
@@ -66,7 +89,8 @@ export async function createFirstAdministrator(
     );
     return {
       success: false,
-      error: "Could not verify administrator status.",
+      error:
+        "Could not verify administrator status. Check SUPABASE_SERVICE_ROLE_KEY (sb_secret_… or service_role JWT) matches NEXT_PUBLIC_SUPABASE_URL, then redeploy.",
     };
   }
 
@@ -88,7 +112,8 @@ export async function createFirstAdministrator(
       success: false,
       error:
         "Add SUPABASE_SERVICE_ROLE_KEY in Netlify → Site configuration → Environment variables, then redeploy. " +
-        "Copy service_role from Supabase → Settings → API (not the anon key).",
+        "Copy secret key (sb_secret_…) or legacy service_role JWT from Supabase → Settings → API (not the anon key). " +
+        "Must be from the same project as NEXT_PUBLIC_SUPABASE_URL (zfsoeketfjnnpirglosq).",
     };
   }
 
@@ -100,6 +125,8 @@ export async function createFirstAdministrator(
     };
   }
 
+  let authUserId: string | null = null;
+
   const { data: authData, error: authError } =
     await service.auth.admin.createUser({
       email: normalized,
@@ -108,17 +135,48 @@ export async function createFirstAdministrator(
     });
 
   if (authError || !authData.user) {
-    console.error(
-      "[createFirstAdministrator] auth",
-      authError?.message ?? "no user",
-    );
-    return {
-      success: false,
-      error: authError?.message ?? "Could not create auth user.",
-    };
+    const already =
+      authError &&
+      /already.*(registered|exists)|duplicate|User already/i.test(
+        authError.message,
+      );
+
+    if (already) {
+      authUserId = await findAuthUserIdByEmail(service, normalized);
+      if (!authUserId) {
+        return {
+          success: false,
+          error:
+            "Auth user already exists but could not be loaded. Open Supabase → Authentication → Users and confirm the email, then retry.",
+        };
+      }
+      const { error: updateError } = await service.auth.admin.updateUserById(
+        authUserId,
+        { password, email_confirm: true },
+      );
+      if (updateError) {
+        return {
+          success: false,
+          error: `Could not update existing auth user password: ${updateError.message}`,
+        };
+      }
+    } else {
+      console.error(
+        "[createFirstAdministrator] auth",
+        authError?.message ?? "no user",
+      );
+      return {
+        success: false,
+        error: authError?.message ?? "Could not create auth user.",
+      };
+    }
+  } else {
+    authUserId = authData.user.id;
   }
 
-  const authUserId = authData.user.id;
+  if (!authUserId) {
+    return { success: false, error: "Could not resolve auth user id." };
+  }
 
   const { error: profileError } = await service.from("admin_users").insert({
     auth_user_id: authUserId,
@@ -130,7 +188,10 @@ export async function createFirstAdministrator(
 
   if (profileError) {
     console.error("[createFirstAdministrator] profile", profileError.message);
-    await service.auth.admin.deleteUser(authUserId);
+    // Do not delete a pre-existing auth user we only updated.
+    if (authData.user) {
+      await service.auth.admin.deleteUser(authUserId);
+    }
     if (
       /one administrator|idx_one_super_admin|duplicate|unique/i.test(
         profileError.message,
@@ -142,7 +203,10 @@ export async function createFirstAdministrator(
           "Administrator already exists. This page is permanently disabled.",
       };
     }
-    return { success: false, error: "Could not create administrator profile." };
+    return {
+      success: false,
+      error: `Could not create administrator profile: ${profileError.message}`,
+    };
   }
 
   return { success: true };

@@ -159,7 +159,7 @@ For improved ISR/cache performance:
 }
 ```
 
-**Active Supabase project ref:** `pdmsbboxhfpexklkqvqr` → `https://pdmsbboxhfpexklkqvqr.supabase.co`
+**Active Supabase project ref:** `zfsoeketfjnnpirglosq` → `https://zfsoeketfjnnpirglosq.supabase.co`
 
 - [ ] `GET /api/health` returns `"ok": true` (checks Supabase, service role, Resend, Gemini, admin)
 - [ ] Public homepage loads (ku / ar / en)

@@ -87,6 +87,9 @@ function isLikelyAnonKey(key: string): boolean {
 }
 
 function isLikelyServiceRoleKey(key: string): boolean {
+  // Modern secret API keys (preferred in new Supabase dashboards)
+  if (key.startsWith("sb_secret_")) return true;
+  // Legacy service_role JWT
   if (!key.startsWith("eyJ")) return false;
   const payload = decodeJwtPayload(key);
   return payload?.role === "service_role";
@@ -148,10 +151,15 @@ export function checkRequiredEnv(): EnvCheck[] {
       secret: false,
     });
   } else {
+    const url = snap.NEXT_PUBLIC_SUPABASE_URL;
+    const wrongProject =
+      /pdmsbboxhfpexklkqvqr|nblnwcacdlafvgrxfldv/i.test(url ?? "");
     checks.push({
       name: "NEXT_PUBLIC_SUPABASE_URL",
-      status: "ok",
-      detail: snap.NEXT_PUBLIC_SUPABASE_URL,
+      status: wrongProject ? "invalid" : "ok",
+      detail: wrongProject
+        ? `Wrong Supabase project (${url}). Admin Auth users live in https://zfsoeketfjnnpirglosq.supabase.co — update Netlify env and redeploy.`
+        : snap.NEXT_PUBLIC_SUPABASE_URL!,
       required: true,
       secret: false,
     });
@@ -201,7 +209,7 @@ export function checkRequiredEnv(): EnvCheck[] {
       status: "invalid",
       detail: role
         ? `Key JWT role is "${String(role)}" but must be "service_role". You likely pasted the anon key.`
-        : "Value is not a valid service_role JWT (must start with eyJ and decode to role=service_role).",
+        : "Value is not a valid secret key (sb_secret_…) or service_role JWT (eyJ… role=service_role).",
       required: true,
       secret: true,
     });
@@ -209,7 +217,9 @@ export function checkRequiredEnv(): EnvCheck[] {
     checks.push({
       name: "SUPABASE_SERVICE_ROLE_KEY",
       status: "ok",
-      detail: "Present (service_role JWT)",
+      detail: snap.SUPABASE_SERVICE_ROLE_KEY.startsWith("sb_secret_")
+        ? "Present (sb_secret_)"
+        : "Present (service_role JWT)",
       required: true,
       secret: true,
     });

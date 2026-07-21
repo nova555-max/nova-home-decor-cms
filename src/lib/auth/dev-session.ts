@@ -9,6 +9,15 @@ export function isDevAuthEnabled(): boolean {
     return false;
   }
 
+  // Never allow cookie-based fake admin auth on Netlify / production hosts.
+  if (
+    process.env.NETLIFY === "true" ||
+    process.env.CF_PAGES === "1" ||
+    process.env.VERCEL === "1"
+  ) {
+    return false;
+  }
+
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "").toLowerCase();
   const onLocalhost =
     appUrl.includes("localhost") || appUrl.includes("127.0.0.1");
@@ -25,7 +34,7 @@ export function validateDevCredentials(
 
   return (
     email.toLowerCase() === process.env.DEV_ADMIN_EMAIL!.toLowerCase() &&
-    password === process.env.DEV_ADMIN_PASSWORD
+    password === process.env.DEV_ADMIN_PASSWORD!.replace(/^["']|["']$/g, "")
   );
 }
 

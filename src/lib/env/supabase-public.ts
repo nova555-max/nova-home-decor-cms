@@ -20,12 +20,25 @@ export function getResolvedSupabasePublicEnv(): {
   anonKey: string;
 } | null {
   const snap = getRuntimeEnvSnapshot();
-  const anonKey =
+  let anonKey =
     snap.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
     PUBLIC_ENV_DEFAULTS.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const urlRaw =
+  let urlRaw =
     snap.NEXT_PUBLIC_SUPABASE_URL ||
     PUBLIC_ENV_DEFAULTS.NEXT_PUBLIC_SUPABASE_URL;
+
+  // Safety net: older Netlify/CF deploys pointed at empty/wrong projects.
+  // Auth users + admin_users live on zfsoeketfjnnpirglosq only.
+  if (/pdmsbboxhfpexklkqvqr|nblnwcacdlafvgrxfldv/i.test(urlRaw)) {
+    console.error(
+      "[supabase-public] Overriding wrong Supabase project URL",
+      urlRaw,
+      "→",
+      PUBLIC_ENV_DEFAULTS.NEXT_PUBLIC_SUPABASE_URL,
+    );
+    urlRaw = PUBLIC_ENV_DEFAULTS.NEXT_PUBLIC_SUPABASE_URL;
+    anonKey = PUBLIC_ENV_DEFAULTS.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  }
 
   const url = resolveSupabaseUrlFromKey(urlRaw, anonKey) || urlRaw;
   if (!url || !anonKey) return null;
