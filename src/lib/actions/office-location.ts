@@ -43,14 +43,19 @@ function logDev(step: string, detail?: Record<string, unknown>) {
 
 async function syncWebsiteSettingsFromOffice(
   office: OfficeLocation,
+  googleMapsUrl?: string | null,
 ): Promise<string | null> {
   if (isLocalDevCms()) return null;
 
   const supabase = await createCmsClient();
   const subtitle = formatOfficePublicSubtitle(office);
-  const company_address = subtitle
-    ? `${office.name}\n${subtitle}`
-    : office.name;
+  const company_address = [
+    office.street,
+    office.name,
+    subtitle,
+  ]
+    .filter((part) => part?.trim())
+    .join("\n");
 
   const { data: existing, error: fetchError } = await supabase
     .from("website_settings")
@@ -62,10 +67,14 @@ async function syncWebsiteSettingsFromOffice(
     return actionErrorMessage(fetchError.message);
   }
 
+  const mapsUrl =
+    googleMapsUrl?.trim() ||
+    buildGoogleMapsUrl(office.latitude, office.longitude);
+
   const payload = {
     latitude: office.latitude,
     longitude: office.longitude,
-    google_maps_url: buildGoogleMapsUrl(office.latitude, office.longitude),
+    google_maps_url: mapsUrl,
     company_address,
   };
 
@@ -157,11 +166,20 @@ export async function saveOfficeLocation(
       }
 
       const subtitle = formatOfficePublicSubtitle(saved);
+      const company_address = [
+        saved.street,
+        saved.name,
+        subtitle,
+      ]
+        .filter((part) => part?.trim())
+        .join("\n");
       await saveLocalSettings({
         latitude: saved.latitude,
         longitude: saved.longitude,
-        google_maps_url: buildGoogleMapsUrl(saved.latitude, saved.longitude),
-        company_address: subtitle ? `${saved.name}\n${subtitle}` : saved.name,
+        google_maps_url:
+          input.google_maps_url?.trim() ||
+          buildGoogleMapsUrl(saved.latitude, saved.longitude),
+        company_address,
       });
 
       revalidateTag(CACHE_TAGS.office);
@@ -264,7 +282,10 @@ export async function saveOfficeLocation(
     }
 
     const office = data as OfficeLocation;
-    const syncError = await syncWebsiteSettingsFromOffice(office);
+    const syncError = await syncWebsiteSettingsFromOffice(
+      office,
+      input.google_maps_url,
+    );
     if (syncError) {
       logDev("settings-sync-failed", { error: syncError });
       return { success: false, error: syncError };

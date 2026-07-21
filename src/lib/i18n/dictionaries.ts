@@ -83,6 +83,7 @@ const ku = {
   footer: {
     contact: "پەیوەندی",
     follow: "شوێنمان بکەوە",
+    location: "شوێن",
     /** Platform-locked — never expose in CMS */
     rights: "هەموو مافەکان پارێزراون",
     /** Platform-locked — never expose in CMS */
@@ -93,6 +94,19 @@ const ku = {
     newsletter_placeholder: "ئیمەیڵەکەت بنووسە",
     newsletter_submit: "بەشداربوون",
     newsletter_success: "سوپاس! بەشداریت تۆمارکرا",
+  },
+  location: {
+    title: "شوێنمان",
+    address: "ناونیشان",
+    city: "شار",
+    region: "هەرێم / ناوچە",
+    country: "وڵات",
+    get_directions: "ڕێنمایی بۆ گەیشتن",
+    card_phone: "تەلەفۆن",
+    card_email: "ئیمەیڵ",
+    card_address: "ناونیشان",
+    trust_line:
+      "سەردانی شۆڕومەکەمان بکە بۆ بینینی نموونەکان و ڕاوێژکاری تایبەت.",
   },
   not_found: {
     title: "پەڕەکە نەدۆزرایەوە",
@@ -180,6 +194,8 @@ const ku = {
     cta: "پەیوەندی ئێستا",
     info_title: "زانیاری پەیوەندی",
     map_unavailable: "نەخشە بەردەست نییە",
+    map_setup_hint:
+      "لە پانێڵی بەڕێوەبردن → Office Location شوێن دیاری بکە، یان GPS لە Settings پاشەکەوت بکە.",
   },
   ai: {
     title: "ڕاوێژکاری Nova",
@@ -299,6 +315,7 @@ const ar = {
   footer: {
     contact: "تواصل",
     follow: "تابعنا",
+    location: "الموقع",
     /** Platform-locked — never expose in CMS */
     rights: "جميع الحقوق محفوظة",
     /** Platform-locked — never expose in CMS */
@@ -308,6 +325,19 @@ const ar = {
     newsletter_placeholder: "أدخل بريدك الإلكتروني",
     newsletter_submit: "اشتراك",
     newsletter_success: "شكراً! تم تسجيل اشتراكك",
+  },
+  location: {
+    title: "موقعنا",
+    address: "العنوان",
+    city: "المدينة",
+    region: "المنطقة",
+    country: "البلد",
+    get_directions: "احصل على الاتجاهات",
+    card_phone: "الهاتف",
+    card_email: "البريد",
+    card_address: "العنوان",
+    trust_line:
+      "زُر صالة العرض لمشاهدة العينات والحصول على استشارة خاصة.",
   },
   not_found: {
     title: "الصفحة غير موجودة",
@@ -395,6 +425,8 @@ const ar = {
     cta: "تواصل الآن",
     info_title: "معلومات التواصل",
     map_unavailable: "الخريطة غير متوفرة",
+    map_setup_hint:
+      "حدد الموقع من لوحة التحكم → Office Location، أو احفظ GPS في Settings.",
   },
   ai: {
     title: "مستشار Nova",
@@ -514,6 +546,7 @@ const en = {
   footer: {
     contact: "Contact",
     follow: "Follow us",
+    location: "Location",
     /** Platform-locked — never expose in CMS */
     rights: "All rights reserved",
     /** Platform-locked — never expose in CMS */
@@ -523,6 +556,19 @@ const en = {
     newsletter_placeholder: "Enter your email",
     newsletter_submit: "Subscribe",
     newsletter_success: "Thank you! You're subscribed",
+  },
+  location: {
+    title: "Our Location",
+    address: "Address",
+    city: "City",
+    region: "Region",
+    country: "Country",
+    get_directions: "Get Directions",
+    card_phone: "Phone",
+    card_email: "Email",
+    card_address: "Address",
+    trust_line:
+      "Visit our showroom to see samples and get a personal consultation.",
   },
   not_found: {
     title: "Page Not Found",
@@ -610,6 +656,8 @@ const en = {
     cta: "Contact Us",
     info_title: "Contact Information",
     map_unavailable: "Map unavailable",
+    map_setup_hint:
+      "Set the office in Admin → Office Location, or save GPS coordinates in Settings.",
   },
   ai: {
     title: "Nova Consultant",

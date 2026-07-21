@@ -32,4 +32,6 @@ export type OfficeLocationPayload = {
   city?: string | null;
   district?: string | null;
   street?: string | null;
+  /** Optional override stored on website_settings.google_maps_url */
+  google_maps_url?: string | null;
 };

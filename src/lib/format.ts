@@ -4,6 +4,9 @@ import {
   normalizePhone,
   phoneTelHref,
   collectPhones,
+  primaryPhone,
+  serializePhoneList,
+  MAX_PHONE_NUMBERS,
 } from "@/lib/phone/e164";
 
 export function slugify(text: string): string {
@@ -56,4 +59,7 @@ export {
   normalizePhone,
   phoneTelHref,
   collectPhones,
+  primaryPhone,
+  serializePhoneList,
+  MAX_PHONE_NUMBERS,
 };

@@ -32,7 +32,7 @@ import {
   saveLocalUpload,
 } from "@/lib/dev/local-uploads";
 import { createEntitySlug, slugify } from "@/lib/format";
-import { normalizePhone } from "@/lib/phone/e164";
+import { normalizePhone, serializePhoneList } from "@/lib/phone/e164";
 import { createCmsClient } from "@/lib/supabase/cms-client";
 import { createStorageWriteClient } from "@/lib/supabase/storage-client";
 import {
@@ -293,7 +293,7 @@ export async function updateWebsiteSettings(
     favicon_url: (formData.get("favicon_url") as string) || null,
     company_name: (formData.get("company_name") as string) || "Nova Home Decor",
     company_description: (formData.get("company_description") as string) || null,
-    phone_number: normalizePhone(rawPhone)?.e164 ?? (rawPhone.trim() || null),
+    phone_number: serializePhoneList([rawPhone]),
     whatsapp_number:
       normalizePhone(rawWhatsapp)?.e164 ?? (rawWhatsapp.trim() || null),
     ...locationFields,

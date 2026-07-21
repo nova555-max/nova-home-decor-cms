@@ -3,7 +3,7 @@ import type { CSSProperties, ReactNode } from "react";
 
 import {
   collectPhones,
-  normalizePhone,
+  primaryPhone,
   type NormalizedPhone,
 } from "@/lib/phone/e164";
 import { cn } from "@/lib/utils";
@@ -21,7 +21,7 @@ type PhoneTextProps = {
 
 /** Always LTR international display — never reverses in RTL pages. */
 export function PhoneText({ phone, className }: PhoneTextProps) {
-  const normalized = normalizePhone(phone);
+  const normalized = primaryPhone(phone);
   if (!normalized) return null;
 
   return (
@@ -50,7 +50,7 @@ export function PhoneLink({
   showIcon = true,
   children,
 }: PhoneLinkProps) {
-  const normalized = normalizePhone(phone);
+  const normalized = primaryPhone(phone);
   if (!normalized) return null;
 
   return (
@@ -93,9 +93,7 @@ export function PhoneLinkList({
   showIcon = true,
 }: PhoneLinkListProps) {
   const list: NormalizedPhone[] = phones
-    ? phones
-        .map((p) => normalizePhone(p))
-        .filter((p): p is NormalizedPhone => !!p)
+    ? collectPhones(...phones)
     : collectPhones(...(fields ?? []));
 
   if (!list.length) return null;

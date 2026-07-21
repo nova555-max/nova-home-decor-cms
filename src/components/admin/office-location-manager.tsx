@@ -48,6 +48,7 @@ const OfficeMapPicker = dynamic(
 
 type OfficeLocationManagerProps = {
   initial: OfficeLocation | null;
+  initialMapsUrl?: string | null;
 };
 
 function toMapValue(office: OfficeLocation | null): OfficeMapValue {
@@ -66,32 +67,18 @@ function mapValuesEqual(
   b: OfficeMapValue,
   nameA: string,
   nameB: string,
+  mapsA: string,
+  mapsB: string,
 ): boolean {
   return (
     nameA.trim() === nameB.trim() &&
+    mapsA.trim() === mapsB.trim() &&
     a.latitude === b.latitude &&
     a.longitude === b.longitude &&
     (a.country ?? null) === (b.country ?? null) &&
     (a.city ?? null) === (b.city ?? null) &&
     (a.district ?? null) === (b.district ?? null) &&
     (a.street ?? null) === (b.street ?? null)
-  );
-}
-
-function ReadOnlyField({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | null | undefined;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
-      <div className="rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm">
-        {value?.trim() ? value : "—"}
-      </div>
-    </div>
   );
 }
 
@@ -106,13 +93,18 @@ function applySavedOffice(
   setMapValue(toMapValue(office));
 }
 
-export function OfficeLocationManager({ initial }: OfficeLocationManagerProps) {
+export function OfficeLocationManager({
+  initial,
+  initialMapsUrl = null,
+}: OfficeLocationManagerProps) {
   const t = useAdminT();
   const router = useRouter();
   const { runLocked, isLocked } = useSubmitLock({
     duplicateMessage: t("common.please_wait"),
   });
   const [name, setName] = useState(initial?.name ?? "");
+  const [mapsUrl, setMapsUrl] = useState(initialMapsUrl ?? "");
+  const [savedMapsUrl, setSavedMapsUrl] = useState(initialMapsUrl ?? "");
   const [mapValue, setMapValue] = useState<OfficeMapValue>(() =>
     toMapValue(initial),
   );
@@ -127,8 +119,10 @@ export function OfficeLocationManager({ initial }: OfficeLocationManagerProps) {
   const failedPayloadKey = useRef<string | null>(null);
   const nameRef = useRef(name);
   const mapRef = useRef(mapValue);
+  const mapsUrlRef = useRef(mapsUrl);
   nameRef.current = name;
   mapRef.current = mapValue;
+  mapsUrlRef.current = mapsUrl;
 
   const isBusy = isSaving || isLocked;
   const subtitle = formatOfficePublicSubtitle({
@@ -139,23 +133,39 @@ export function OfficeLocationManager({ initial }: OfficeLocationManagerProps) {
 
   const hasUnsavedChanges = useMemo(() => {
     if (!savedOffice) return true;
-    return !mapValuesEqual(mapValue, toMapValue(savedOffice), name, savedOffice.name);
-  }, [mapValue, name, savedOffice]);
+    return !mapValuesEqual(
+      mapValue,
+      toMapValue(savedOffice),
+      name,
+      savedOffice.name,
+      mapsUrl,
+      savedMapsUrl,
+    );
+  }, [mapValue, mapsUrl, name, savedMapsUrl, savedOffice]);
 
-  const payloadKey = useCallback((nextName: string, nextMap: OfficeMapValue) => {
-    return JSON.stringify({
-      name: nextName.trim(),
-      latitude: nextMap.latitude,
-      longitude: nextMap.longitude,
-      country: nextMap.country,
-      city: nextMap.city,
-      district: nextMap.district,
-      street: nextMap.street,
-    });
-  }, []);
+  const payloadKey = useCallback(
+    (nextName: string, nextMap: OfficeMapValue, nextMapsUrl: string) => {
+      return JSON.stringify({
+        name: nextName.trim(),
+        latitude: nextMap.latitude,
+        longitude: nextMap.longitude,
+        country: nextMap.country,
+        city: nextMap.city,
+        district: nextMap.district,
+        street: nextMap.street,
+        google_maps_url: nextMapsUrl.trim(),
+      });
+    },
+    [],
+  );
 
   const persist = useCallback(
-    async (nextName: string, nextMap: OfficeMapValue, showToast = false) => {
+    async (
+      nextName: string,
+      nextMap: OfficeMapValue,
+      nextMapsUrl: string,
+      showToast = false,
+    ) => {
       const trimmedName = nextName.trim();
       if (!trimmedName) {
         if (showToast) toast.error(t("office_location.name_required"));
@@ -166,9 +176,8 @@ export function OfficeLocationManager({ initial }: OfficeLocationManagerProps) {
         return;
       }
 
-      const key = payloadKey(trimmedName, nextMap);
+      const key = payloadKey(trimmedName, nextMap, nextMapsUrl);
       if (!showToast && failedPayloadKey.current === key) {
-        // Do not spam the same failing autosave payload (keeps button spinning).
         return;
       }
 
@@ -188,6 +197,7 @@ export function OfficeLocationManager({ initial }: OfficeLocationManagerProps) {
               city: nextMap.city,
               district: nextMap.district,
               street: nextMap.street,
+              google_maps_url: nextMapsUrl.trim() || null,
             }),
             SAVE_TIMEOUT_MS,
             "Office location save timed out after 15 seconds. Please try again.",
@@ -196,6 +206,8 @@ export function OfficeLocationManager({ initial }: OfficeLocationManagerProps) {
           if (result.success && result.data) {
             failedPayloadKey.current = null;
             applySavedOffice(result.data, setName, setMapValue, setSavedOffice);
+            setSavedMapsUrl(nextMapsUrl.trim());
+            setMapsUrl(nextMapsUrl.trim());
             setAutoSaveState("saved");
             if (showToast) toast.success(t("common.saved"));
             router.refresh();
@@ -209,8 +221,7 @@ export function OfficeLocationManager({ initial }: OfficeLocationManagerProps) {
               ? result.error
               : "Could not save office location.";
           setAutoSaveState("idle");
-          if (showToast) toast.error(errorMessage);
-          else toast.error(errorMessage);
+          toast.error(errorMessage);
           if (process.env.NODE_ENV === "development") {
             console.error("[office-location:save]", errorMessage, result);
           }
@@ -241,13 +252,14 @@ export function OfficeLocationManager({ initial }: OfficeLocationManagerProps) {
   );
 
   const scheduleAutoSave = useCallback(
-    (nextName: string, nextMap: OfficeMapValue) => {
+    (nextName: string, nextMap: OfficeMapValue, nextMapsUrl: string) => {
       if (!nextName.trim()) return;
       if (nextMap.latitude == null || nextMap.longitude == null) return;
-      if (failedPayloadKey.current === payloadKey(nextName, nextMap)) return;
+      if (failedPayloadKey.current === payloadKey(nextName, nextMap, nextMapsUrl))
+        return;
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(() => {
-        void persist(nameRef.current, mapRef.current, false);
+        void persist(nameRef.current, mapRef.current, mapsUrlRef.current, false);
       }, 900);
     },
     [payloadKey, persist],
@@ -259,8 +271,8 @@ export function OfficeLocationManager({ initial }: OfficeLocationManagerProps) {
       return;
     }
     if (!hasUnsavedChanges || isSavingRef.current) return;
-    scheduleAutoSave(name, mapValue);
-  }, [hasUnsavedChanges, mapValue, name, scheduleAutoSave]);
+    scheduleAutoSave(name, mapValue, mapsUrl);
+  }, [hasUnsavedChanges, mapValue, mapsUrl, name, scheduleAutoSave]);
 
   useEffect(
     () => () => {
@@ -272,7 +284,11 @@ export function OfficeLocationManager({ initial }: OfficeLocationManagerProps) {
   const handleManualSave = () => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     failedPayloadKey.current = null;
-    void persist(nameRef.current, mapRef.current, true);
+    void persist(nameRef.current, mapRef.current, mapsUrlRef.current, true);
+  };
+
+  const patchMap = (patch: Partial<OfficeMapValue>) => {
+    setMapValue((prev) => ({ ...prev, ...patch }));
   };
 
   return (
@@ -346,38 +362,100 @@ export function OfficeLocationManager({ initial }: OfficeLocationManagerProps) {
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <ReadOnlyField
-                  label={t("office_location.country")}
-                  value={mapValue.country}
-                />
-                <ReadOnlyField
-                  label={t("office_location.city")}
-                  value={mapValue.city}
-                />
-                <ReadOnlyField
-                  label={t("office_location.district")}
-                  value={mapValue.district}
-                />
-                <ReadOnlyField
-                  label={t("office_location.street")}
-                  value={mapValue.street}
-                />
-                <ReadOnlyField
-                  label={t("office_location.latitude")}
-                  value={
-                    mapValue.latitude != null
-                      ? mapValue.latitude.toFixed(6)
-                      : null
-                  }
-                />
-                <ReadOnlyField
-                  label={t("office_location.longitude")}
-                  value={
-                    mapValue.longitude != null
-                      ? mapValue.longitude.toFixed(6)
-                      : null
-                  }
-                />
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="office-street">{t("office_location.street")}</Label>
+                  <Input
+                    id="office-street"
+                    value={mapValue.street ?? ""}
+                    onChange={(e) => patchMap({ street: e.target.value || null })}
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="office-city">{t("office_location.city")}</Label>
+                  <Input
+                    id="office-city"
+                    value={mapValue.city ?? ""}
+                    onChange={(e) => patchMap({ city: e.target.value || null })}
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="office-district">
+                    {t("office_location.district")}
+                  </Label>
+                  <Input
+                    id="office-district"
+                    value={mapValue.district ?? ""}
+                    onChange={(e) =>
+                      patchMap({ district: e.target.value || null })
+                    }
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="office-country">
+                    {t("office_location.country")}
+                  </Label>
+                  <Input
+                    id="office-country"
+                    value={mapValue.country ?? ""}
+                    onChange={(e) =>
+                      patchMap({ country: e.target.value || null })
+                    }
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="office-lat">{t("office_location.latitude")}</Label>
+                  <Input
+                    id="office-lat"
+                    type="number"
+                    step="any"
+                    value={mapValue.latitude ?? ""}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      patchMap({
+                        latitude: raw === "" ? null : Number(raw),
+                      });
+                    }}
+                    className="rounded-xl font-mono text-sm"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="office-lng">
+                    {t("office_location.longitude")}
+                  </Label>
+                  <Input
+                    id="office-lng"
+                    type="number"
+                    step="any"
+                    value={mapValue.longitude ?? ""}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      patchMap({
+                        longitude: raw === "" ? null : Number(raw),
+                      });
+                    }}
+                    className="rounded-xl font-mono text-sm"
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="office-maps-url">
+                    {t("office_location.maps_url")}
+                  </Label>
+                  <Input
+                    id="office-maps-url"
+                    type="url"
+                    value={mapsUrl}
+                    onChange={(e) => setMapsUrl(e.target.value)}
+                    placeholder="https://maps.google.com/..."
+                    className="rounded-xl"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {t("office_location.maps_url_hint")}
+                  </p>
+                </div>
               </div>
 
               <Button

@@ -1,6 +1,7 @@
-import type { GeocodedAddress } from "@/types/office-location";
 import {
   buildGoogleMapsNavigationUrl,
+  buildGoogleMapsEmbedUrl,
+  resolveDirectionsUrl,
   DEFAULT_MAP_CENTER,
 } from "@/lib/office-location";
 
@@ -33,5 +34,10 @@ export function googleMapsLink(
   return null;
 }
 
-export { buildGoogleMapsNavigationUrl, DEFAULT_MAP_CENTER };
+export {
+  buildGoogleMapsNavigationUrl,
+  DEFAULT_MAP_CENTER,
+  buildGoogleMapsEmbedUrl,
+  resolveDirectionsUrl,
+};
 export { buildGoogleMapsUrl } from "@/lib/office-location";

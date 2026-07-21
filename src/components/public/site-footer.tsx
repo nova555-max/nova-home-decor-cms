@@ -9,7 +9,8 @@ import { whatsappLink } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import type { WebsiteSettings } from "@/types/database";
 import type { OfficeLocation } from "@/types/office-location";
-import { OfficeAddressDisplay } from "@/components/public/office-address-display";
+import { LazyGoogleMap } from "@/components/public/lazy-google-map";
+import { LocationDetails } from "@/components/public/location-details";
 import { LuxuryButton } from "@/components/public/showroom/luxury-button";
 import { PhoneLinkList } from "@/components/ui/phone-link";
 import { Input } from "@/components/ui/input";
@@ -39,20 +40,19 @@ export function SiteFooter({ settings, locale, office }: SiteFooterProps) {
   return (
     <footer className="border-t border-border bg-card">
       <div className="mx-auto max-w-[1400px] px-5 py-16 md:px-10 md:py-20 lg:px-14">
-        <div className="grid gap-12 lg:grid-cols-12 lg:gap-10">
-          <div className="lg:col-span-4">
+        <div className="grid gap-12 sm:grid-cols-2 xl:grid-cols-12 xl:gap-8">
+          <div className="xl:col-span-3">
             <h3 className="font-display text-2xl font-medium tracking-tight text-foreground">
               {companyName}
             </h3>
-            <OfficeAddressDisplay
-              office={office}
-              locale={locale}
-              variant="footer"
-              showHeading={false}
-            />
+            {settings?.company_description ? (
+              <p className="text-muted-foreground mt-4 max-w-sm text-sm leading-relaxed">
+                {settings.company_description}
+              </p>
+            ) : null}
           </div>
 
-          <div className="lg:col-span-3">
+          <div className="xl:col-span-2">
             <h4 className="text-showroom-accent mb-5 text-xs tracking-[0.28em] uppercase">
               {t(locale, "footer", "contact")}
             </h4>
@@ -83,17 +83,46 @@ export function SiteFooter({ settings, locale, office }: SiteFooterProps) {
                   style={{ unicodeBidi: "plaintext" }}
                 >
                   <MessageCircle className="size-4 shrink-0 opacity-60" />
-                  <span className="whitespace-nowrap">{t(locale, "common", "whatsapp")}</span>
+                  <span className="whitespace-nowrap">
+                    {t(locale, "common", "whatsapp")}
+                  </span>
                 </a>
               ) : null}
             </div>
           </div>
 
-          <div className="lg:col-span-2">
+          <div className="xl:col-span-3">
+            <h4 className="text-showroom-accent mb-5 text-xs tracking-[0.28em] uppercase">
+              {t(locale, "footer", "location")}
+            </h4>
+            {office && office.latitude != null && office.longitude != null ? (
+              <div className="space-y-4">
+                <LazyGoogleMap
+                  latitude={office.latitude}
+                  longitude={office.longitude}
+                  title={office.name}
+                  variant="preview"
+                  className="border border-border/60 shadow-sm"
+                />
+                <LocationDetails
+                  office={office}
+                  locale={locale}
+                  compact
+                  showDirections
+                />
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-sm">
+                {t(locale, "contact", "map_unavailable")}
+              </p>
+            )}
+          </div>
+
+          <div className="xl:col-span-2">
             <h4 className="text-showroom-accent mb-5 text-xs tracking-[0.28em] uppercase">
               {t(locale, "footer", "follow")}
             </h4>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               {settings?.facebook_url ? (
                 <a
                   href={settings.facebook_url}
@@ -149,14 +178,14 @@ export function SiteFooter({ settings, locale, office }: SiteFooterProps) {
             </div>
           </div>
 
-          <div className="lg:col-span-3">
+          <div className="sm:col-span-2 xl:col-span-2">
             <h4 className="text-showroom-accent mb-2 text-xs tracking-[0.28em] uppercase">
               {t(locale, "footer", "newsletter_title")}
             </h4>
             <p className="text-showroom-muted mb-4 text-sm">
               {t(locale, "footer", "newsletter_subtitle")}
             </p>
-            <form onSubmit={subscribe} className="flex flex-col gap-3 sm:flex-row">
+            <form onSubmit={subscribe} className="flex flex-col gap-3">
               <Input
                 type="email"
                 value={email}

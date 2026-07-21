@@ -39,13 +39,42 @@ async function readLocalOffice(): Promise<OfficeLocation | null> {
   }
 }
 
+async function officeFromWebsiteSettings(): Promise<OfficeLocation | null> {
+  const supabase = createPublicClient();
+  const { data, error } = await supabase
+    .from("website_settings")
+    .select("company_name, company_address, latitude, longitude")
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  if (data.latitude == null || data.longitude == null) return null;
+
+  return {
+    id: "settings-fallback",
+    name:
+      (data.company_name as string)?.trim() ||
+      "Nova Home Decor - Main Office",
+    latitude: Number(data.latitude),
+    longitude: Number(data.longitude),
+    country: "Iraq",
+    city: null,
+    district: null,
+    street: (data.company_address as string) || null,
+    is_active: true,
+    sort_order: 0,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+}
+
 async function fetchActiveOffice(): Promise<OfficeLocation | null> {
   if (isLocalDevCms()) {
     return (await readLocalOffice()) ?? DEFAULT_OFFICE;
   }
 
   const supabase = createPublicClient();
-  return withTimeoutFallback(
+  const fromTable = await withTimeoutFallback(
     (async () => {
       const { data, error } = await supabase
         .from("office_locations")
@@ -62,11 +91,23 @@ async function fetchActiveOffice(): Promise<OfficeLocation | null> {
     null,
     "fetchActiveOffice",
   );
+
+  if (fromTable) return fromTable;
+
+  const fromSettings = await withTimeoutFallback(
+    officeFromWebsiteSettings(),
+    STARTUP_QUERY_TIMEOUT_MS,
+    null,
+    "officeFromWebsiteSettings",
+  );
+
+  // Always show a map: settings GPS if set, otherwise Erbil default until Admin → Office Location is filled.
+  return fromSettings ?? DEFAULT_OFFICE;
 }
 
 export const getActiveOfficeLocation = unstable_cache(
   fetchActiveOffice,
-  ["active-office-location"],
+  ["active-office-location-v2"],
   { tags: [CACHE_TAGS.office, CACHE_TAGS.settings], revalidate: 60 },
 );
 
@@ -84,6 +125,7 @@ export async function getAdminOfficeLocation(): Promise<OfficeLocation | null> {
     .limit(1)
     .maybeSingle();
 
-  if (error || !data) return null;
-  return data as OfficeLocation;
+  if (!error && data) return data as OfficeLocation;
+
+  return officeFromWebsiteSettings();
 }

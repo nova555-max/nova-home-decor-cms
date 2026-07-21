@@ -177,22 +177,8 @@ function formatDigitsInternational(e164: string): string {
   return `+${cc} ${groups}`;
 }
 
-export function formatInternationalPhone(
-  phone: string | null | undefined,
-): string {
-  return normalizePhone(phone)?.display ?? "";
-}
-
-export function phoneTelHref(phone: string | null | undefined): string | null {
-  return normalizePhone(phone)?.telHref ?? null;
-}
-
-export function whatsappLink(number: string | null | undefined): string | null {
-  const normalized = normalizePhone(number);
-  if (!normalized) return null;
-  const digits = normalized.e164.replace(/\D/g, "");
-  return digits ? `https://wa.me/${digits}` : null;
-}
+/** Max phone numbers a business owner can save (stored comma-separated). */
+export const MAX_PHONE_NUMBERS = 4;
 
 /**
  * Split a stored phone field that may contain multiple numbers
@@ -225,4 +211,48 @@ export function collectPhones(
   }
 
   return out;
+}
+
+/** First valid number — for header / primary CTA call buttons. */
+export function primaryPhone(
+  value: string | null | undefined,
+): NormalizedPhone | null {
+  return collectPhones(value)[0] ?? null;
+}
+
+/** Persist up to MAX_PHONE_NUMBERS as a single settings field. */
+export function serializePhoneList(
+  phones: Array<string | null | undefined>,
+): string | null {
+  const list = collectPhones(...phones)
+    .slice(0, MAX_PHONE_NUMBERS)
+    .map((p) => p.e164);
+  return list.length ? list.join(", ") : null;
+}
+
+/** Admin form slots: 1–4 inputs, padded for editing. */
+export function phoneSlotsFromStored(
+  value: string | null | undefined,
+): string[] {
+  const slots = splitPhoneField(value)
+    .slice(0, MAX_PHONE_NUMBERS)
+    .map((part) => toPhoneInputValue(part) ?? part);
+  return slots.length ? slots : [""];
+}
+
+export function formatInternationalPhone(
+  phone: string | null | undefined,
+): string {
+  return primaryPhone(phone)?.display ?? "";
+}
+
+export function phoneTelHref(phone: string | null | undefined): string | null {
+  return primaryPhone(phone)?.telHref ?? null;
+}
+
+export function whatsappLink(number: string | null | undefined): string | null {
+  const normalized = normalizePhone(number);
+  if (!normalized) return null;
+  const digits = normalized.e164.replace(/\D/g, "");
+  return digits ? `https://wa.me/${digits}` : null;
 }

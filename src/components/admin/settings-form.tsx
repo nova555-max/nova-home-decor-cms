@@ -15,9 +15,14 @@ import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { PhoneInputField } from "@/components/admin/phone-input";
 import { useAdminT } from "@/hooks";
 import { useSubmitLock } from "@/hooks/use-submit-lock";
-import { toPhoneInputValue } from "@/lib/phone/e164";
+import {
+  MAX_PHONE_NUMBERS,
+  phoneSlotsFromStored,
+  toPhoneInputValue,
+} from "@/lib/phone/e164";
 import {
   isValidEmail,
+  isValidPhone,
   validateContactFields,
 } from "@/lib/validation/contact";
 import { Button } from "@/components/ui/button";
@@ -48,7 +53,7 @@ function toFormState(settings: WebsiteSettings | null) {
     favicon_url: settings?.favicon_url ?? "",
     company_name: settings?.company_name ?? "Nova Home Decor",
     company_description: settings?.company_description ?? "",
-    phone_number: toPhoneInputValue(settings?.phone_number) ?? "",
+    phone_numbers: phoneSlotsFromStored(settings?.phone_number),
     whatsapp_number: toPhoneInputValue(settings?.whatsapp_number) ?? "",
     working_hours: settings?.working_hours ?? "",
     facebook_url: settings?.facebook_url ?? "",
@@ -87,7 +92,7 @@ export function SettingsForm({
   });
   const [form, setForm] = useState<FormState>(() => toFormState(settings));
   const [fieldErrors, setFieldErrors] = useState<{
-    phone_number?: boolean;
+    phone_indexes?: number[];
     whatsapp_number?: boolean;
     email_indexes?: number[];
   }>({});
@@ -106,9 +111,19 @@ export function SettingsForm({
 
     const validationError = validateContactFields(form);
     if (validationError) {
-      if (validationError === "phone_invalid") {
-        setFieldErrors({ phone_number: true });
-        toast.error(t("settings.phone_invalid"));
+      if (validationError === "phone_invalid" || validationError === "phone_limit") {
+        setFieldErrors({
+          phone_indexes: form.phone_numbers
+            .map((phone, index) =>
+              phone.trim() && !isValidPhone(phone) ? index : -1,
+            )
+            .filter((index) => index >= 0),
+        });
+        toast.error(
+          validationError === "phone_limit"
+            ? t("settings.phone_limit")
+            : t("settings.phone_invalid"),
+        );
         return;
       }
       if (validationError === "whatsapp_invalid") {
@@ -133,7 +148,7 @@ export function SettingsForm({
     formData.append("favicon_url", form.favicon_url);
     formData.append("company_name", form.company_name);
     formData.append("company_description", form.company_description);
-    formData.append("phone_number", form.phone_number);
+    formData.append("phone_number", form.phone_numbers.join(", "));
     formData.append("whatsapp_number", form.whatsapp_number);
     formData.append("working_hours", form.working_hours);
     formData.append("facebook_url", form.facebook_url);
@@ -248,23 +263,80 @@ export function SettingsForm({
       </Card>
 
       <Card className="border-border/40 rounded-2xl shadow-sm">
-        <CardHeader>
-          <CardTitle>{t("settings.phones")}</CardTitle>
-          <CardDescription>{t("settings.phones_desc")}</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="phone_number">{t("settings.phone")}</Label>
-            <PhoneInputField
-              id="phone_number"
-              value={form.phone_number}
-              onChange={(value) => {
-                setFieldErrors((prev) => ({ ...prev, phone_number: false }));
-                setForm((prev) => ({ ...prev, phone_number: value }));
-              }}
-              aria-invalid={fieldErrors.phone_number}
-            />
+        <CardHeader className="flex-row items-center justify-between gap-4">
+          <div>
+            <CardTitle>{t("settings.phones")}</CardTitle>
+            <CardDescription>{t("settings.phones_desc")}</CardDescription>
           </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="rounded-xl"
+            disabled={form.phone_numbers.length >= MAX_PHONE_NUMBERS}
+            onClick={() =>
+              setForm((prev) => {
+                if (prev.phone_numbers.length >= MAX_PHONE_NUMBERS) return prev;
+                return {
+                  ...prev,
+                  phone_numbers: [...prev.phone_numbers, ""],
+                };
+              })
+            }
+          >
+            <Plus className="size-4" /> {t("settings.add_phone")}
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {form.phone_numbers.map((phone, index) => (
+            <div
+              key={`phone-${index}`}
+              className="grid gap-3 sm:grid-cols-[1fr_auto]"
+            >
+              <div className="space-y-2">
+                <Label htmlFor={`phone_number_${index}`}>
+                  {t("settings.phone")} {index + 1}
+                  {index === 0 ? ` (${t("settings.phone_primary")})` : ""}
+                </Label>
+                <PhoneInputField
+                  id={`phone_number_${index}`}
+                  value={phone}
+                  onChange={(value) => {
+                    setFieldErrors((prev) => ({
+                      ...prev,
+                      phone_indexes: prev.phone_indexes?.filter(
+                        (i) => i !== index,
+                      ),
+                    }));
+                    setForm((prev) => {
+                      const next = [...prev.phone_numbers];
+                      next[index] = value;
+                      return { ...prev, phone_numbers: next };
+                    });
+                  }}
+                  aria-invalid={fieldErrors.phone_indexes?.includes(index)}
+                />
+              </div>
+              {form.phone_numbers.length > 1 ? (
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  variant="ghost"
+                  className="mt-8"
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      phone_numbers: prev.phone_numbers.filter(
+                        (_, i) => i !== index,
+                      ),
+                    }))
+                  }
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              ) : null}
+            </div>
+          ))}
           <div className="space-y-2">
             <Label htmlFor="whatsapp_number">{t("settings.whatsapp")}</Label>
             <PhoneInputField
