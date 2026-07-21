@@ -9,7 +9,7 @@ import { safeHeadOk } from "@/lib/fetch/safe-fetch";
 import { isLocalDevCms } from "@/lib/dev/local-mode";
 import { getServiceRoleKey, createServiceClient } from "@/lib/supabase/admin";
 import { createCmsClient } from "@/lib/supabase/cms-client";
-import { createClient as createAnonClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import {
   averageResponseTime,
   calculateProductionReadiness,
@@ -734,24 +734,33 @@ function buildChecks(): CheckInput[] {
           };
         }
         try {
-          const supabase = await createAnonClient();
+          // Must use cookieless anon client — server createClient() carries the
+          // logged-in admin session and falsely reports "anonymous insert succeeded".
+          const supabase = createPublicClient();
+          const slug = `qa-rls-probe-${Date.now()}`;
           const { data, error } = await supabase
             .from("products")
             .insert({
               name: "QA RLS probe",
-              slug: `qa-probe-${Date.now()}`,
+              slug,
             })
             .select("id")
             .single();
 
-          if (error && /policy|permission|denied|RLS/i.test(error.message)) {
+          if (error && /policy|permission|denied|RLS|42501/i.test(error.message)) {
             return {
               status: "pass",
               message: "Anonymous writes are blocked by RLS.",
             };
           }
           if (!error && data?.id) {
-            await supabase.from("products").delete().eq("id", data.id);
+            // Clean up if somehow inserted (should not happen).
+            try {
+              const service = createServiceClient();
+              await service.from("products").delete().eq("id", data.id);
+            } catch {
+              /* ignore cleanup errors */
+            }
             return {
               status: "fail",
               message: "Anonymous insert succeeded — RLS may be misconfigured.",
@@ -759,7 +768,9 @@ function buildChecks(): CheckInput[] {
           }
           return {
             status: "pass",
-            message: "RLS policies active — anonymous writes blocked.",
+            message: error
+              ? `RLS blocked anonymous write (${error.message}).`
+              : "RLS policies active — anonymous writes blocked.",
           };
         } catch (error) {
           return {
