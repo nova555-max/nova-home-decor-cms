@@ -34,7 +34,33 @@ function mapAdminUser(row: AdminUser): AdminContext {
 export async function getAdminUserByAuthId(
   authUserId: string,
 ): Promise<AdminUser | null> {
-  // Service role avoids RLS chicken-and-egg when auth_user_id is missing/mismatched.
+  // 1) Session client first — RLS "Admins read own profile" works after login
+  //    even when SUPABASE_SERVICE_ROLE_KEY is missing/wrong on Netlify.
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("admin_users")
+      .select("*")
+      .eq("auth_user_id", authUserId)
+      .maybeSingle();
+
+    if (!error && data) {
+      return {
+        ...data,
+        permissions: normalizePermissions(data.permissions),
+      } as AdminUser;
+    }
+    if (error) {
+      console.error("[getAdminUserByAuthId] session", error.message);
+    }
+  } catch (err) {
+    console.error(
+      "[getAdminUserByAuthId] session",
+      err instanceof Error ? err.message : err,
+    );
+  }
+
+  // 2) Service role — needed when auth_user_id is missing/mismatched or no session yet.
   try {
     const service = createServiceClient();
     const { data, error } = await service
@@ -44,7 +70,7 @@ export async function getAdminUserByAuthId(
       .maybeSingle();
 
     if (error) {
-      console.error("[getAdminUserByAuthId]", error.message);
+      console.error("[getAdminUserByAuthId] service", error.message);
       return null;
     }
     if (!data) return null;
@@ -54,7 +80,7 @@ export async function getAdminUserByAuthId(
     } as AdminUser;
   } catch (err) {
     console.error(
-      "[getAdminUserByAuthId]",
+      "[getAdminUserByAuthId] service",
       err instanceof Error ? err.message : err,
     );
     return null;

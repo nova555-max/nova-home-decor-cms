@@ -31,8 +31,10 @@ import {
   getAdminUserByAuthId,
   getAdminUserByEmail,
 } from "@/lib/queries/admin-users";
+import { normalizePermissions } from "@/lib/auth/permissions";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import type { AdminUser } from "@/types/admin";
 
 type ActionResult = { success: true } | { success: false; error: string };
 
@@ -179,7 +181,28 @@ export async function signInAsAdmin(
       return { success: false, error: "Invalid login response from Supabase Auth." };
     }
 
-    let profile = await getAdminUserByAuthId(authUser.id);
+    // Same client that just signed in (session in memory — avoids cookie race on Netlify).
+    let profile: AdminUser | null = null;
+    {
+      const { data: ownRow, error: ownError } = await supabase
+        .from("admin_users")
+        .select("*")
+        .eq("auth_user_id", authUser.id)
+        .maybeSingle();
+
+      if (ownError) {
+        console.error("[signInAsAdmin] own profile", ownError.message);
+      } else if (ownRow) {
+        profile = {
+          ...ownRow,
+          permissions: normalizePermissions(ownRow.permissions),
+        } as AdminUser;
+      }
+    }
+
+    if (!profile) {
+      profile = await getAdminUserByAuthId(authUser.id);
+    }
 
     if (!profile) {
       profile = await getAdminUserByEmail(authUser.email);
@@ -198,8 +221,9 @@ export async function signInAsAdmin(
       return {
         success: false,
         error:
-          "Supabase Auth login succeeded, but no admin_users row exists for this email. " +
-          "Open /admin/setup (first install), or verify SUPABASE_SERVICE_ROLE_KEY can read admin_users.",
+          "Auth login succeeded, but admin profile could not be loaded. " +
+          "SUPER_ADMIN_EMAIL alone is not enough — set SUPABASE_SERVICE_ROLE_KEY from the SAME Supabase project as NEXT_PUBLIC_SUPABASE_URL (zfsoeketfjnnpirglosq: secret sb_secret_… or service_role JWT), enable it for Builds + Functions, then redeploy. " +
+          "Also open /api/health and check database/auth status.",
       };
     }
 
