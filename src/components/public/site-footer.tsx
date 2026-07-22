@@ -1,19 +1,27 @@
 "use client";
 
-import { useState } from "react";
-import { MessageCircle, Share2 } from "lucide-react";
-import { toast } from "sonner";
+import Image from "next/image";
+import Link from "next/link";
+import type { ReactNode } from "react";
+import {
+  Mail,
+  MapPin,
+  MessageCircle,
+  Navigation,
+  Phone,
+} from "lucide-react";
+import { motion } from "@/lib/motion";
 
 import type { Locale } from "@/config/site";
 import { whatsappLink } from "@/lib/format";
 import { t } from "@/lib/i18n";
+import { formatOfficePublicSubtitle } from "@/lib/office-location";
+import { cn } from "@/lib/utils";
 import type { WebsiteSettings } from "@/types/database";
 import type { OfficeLocation } from "@/types/office-location";
 import { LazyGoogleMap } from "@/components/public/lazy-google-map";
-import { LocationDetails } from "@/components/public/location-details";
-import { LuxuryButton } from "@/components/public/showroom/luxury-button";
 import { PhoneLinkList, PhoneText } from "@/components/ui/phone-link";
-import { Input } from "@/components/ui/input";
+import { ButtonLink } from "@/components/ui/button-link";
 
 type SiteFooterProps = {
   settings: WebsiteSettings | null;
@@ -21,197 +29,403 @@ type SiteFooterProps = {
   office: OfficeLocation | null;
 };
 
+const QUICK_LINKS = [
+  { href: "/", key: "home" as const },
+  { href: "/#categories", key: "products" as const },
+  { href: "/#projects", key: "projects" as const },
+  { href: "/#gallery", key: "gallery" as const },
+  { href: "/#contact", key: "contact" as const },
+] as const;
+
+function FooterPanel({
+  children,
+  className,
+  delay = 0,
+}: {
+  children: ReactNode;
+  className?: string;
+  delay?: number;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 28 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.65, delay, ease: [0.22, 1, 0.36, 1] }}
+      className={cn(
+        "showroom-glass relative flex h-full flex-col overflow-hidden rounded-[24px] border border-white/35 p-7 shadow-[0_22px_60px_-28px_rgb(30_31_27_/_0.35)] backdrop-blur-xl md:p-8",
+        "transition duration-500 hover:-translate-y-1 hover:border-[var(--gold)]/35 hover:shadow-[0_28px_70px_-24px_rgb(201_169_110_/_0.28)]",
+        "dark:border-white/10",
+        className,
+      )}
+    >
+      <span
+        className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[var(--gold)]/55 to-transparent"
+        aria-hidden
+      />
+      {children}
+    </motion.div>
+  );
+}
+
+function PanelHeading({ children }: { children: ReactNode }) {
+  return (
+    <h4 className="text-showroom-accent mb-5 text-[11px] tracking-[0.28em] uppercase">
+      {children}
+    </h4>
+  );
+}
+
+function ContactMiniCard({
+  icon,
+  title,
+  children,
+  href,
+  target,
+  rel,
+}: {
+  icon: ReactNode;
+  title: string;
+  children: ReactNode;
+  href?: string;
+  target?: string;
+  rel?: string;
+}) {
+  const className =
+    "group flex items-start gap-3 rounded-[18px] border border-white/20 bg-background/35 p-3.5 transition duration-300 hover:border-[var(--gold)]/40 hover:bg-[var(--gold)]/8 dark:border-white/10";
+
+  const body = (
+    <>
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-[var(--gold)]/25 bg-[var(--gold)]/10 text-[var(--gold)] transition group-hover:scale-105">
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-xs tracking-wide text-muted-foreground">
+          {title}
+        </span>
+        <div className="mt-0.5 text-sm font-medium text-foreground">
+          {children}
+        </div>
+      </span>
+    </>
+  );
+
+  if (href) {
+    return (
+      <a href={href} target={target} rel={rel} className={className}>
+        {body}
+      </a>
+    );
+  }
+
+  return <div className={className}>{body}</div>;
+}
+
+function SocialIcon({
+  href,
+  label,
+  children,
+}: {
+  href: string;
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={label}
+      className="inline-flex size-12 items-center justify-center rounded-full border border-white/25 bg-background/30 text-foreground shadow-sm backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:border-[var(--gold)] hover:bg-[var(--gold)]/15 hover:text-[var(--gold)] dark:border-white/10"
+    >
+      {children}
+    </a>
+  );
+}
+
 export function SiteFooter({ settings, locale, office }: SiteFooterProps) {
   const companyName = settings?.company_name ?? "Nova Home Decor";
+  const description =
+    settings?.company_description?.trim() ||
+    t(locale, "footer", "default_description");
   const waLink = whatsappLink(settings?.whatsapp_number);
+  const primaryEmail = settings?.email_addresses?.[0];
   const year = new Date().getFullYear();
-  const [email, setEmail] = useState("");
+  const addressLine = office
+    ? [
+        office.name,
+        formatOfficePublicSubtitle({
+          city: office.city,
+          district: office.district,
+          country: office.country,
+          street: office.street,
+        }),
+      ]
+        .filter(Boolean)
+        .join(" — ")
+    : settings?.company_address?.trim() || null;
 
-  const subscribe = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim() || !email.includes("@")) {
-      toast.error(t(locale, "quote", "required"));
-      return;
-    }
-    setEmail("");
-    toast.success(t(locale, "footer", "newsletter_success"));
-  };
+  const directionsHref =
+    office != null
+      ? `https://www.google.com/maps/dir/?api=1&destination=${office.latitude},${office.longitude}`
+      : settings?.google_maps_url?.trim() || null;
+
+  const socials = [
+    {
+      key: "facebook",
+      href: settings?.facebook_url,
+      label: "Facebook",
+      icon: (
+        <svg viewBox="0 0 24 24" className="size-5 fill-current" aria-hidden>
+          <path d="M14 9h3V6h-3c-1.6 0-3 1.4-3 3v2H8v3h3v7h3v-7h3l1-3h-4V9c0-.6.4-1 1-1z" />
+        </svg>
+      ),
+    },
+    {
+      key: "instagram",
+      href: settings?.instagram_url,
+      label: "Instagram",
+      icon: (
+        <svg viewBox="0 0 24 24" className="size-5 fill-current" aria-hidden>
+          <path d="M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4zm5 4.5A4.5 4.5 0 1 0 16.5 12 4.5 4.5 0 0 0 12 7.5zm0 7.2A2.7 2.7 0 1 1 14.7 12 2.7 2.7 0 0 1 12 14.7zM17.8 6.9a1.1 1.1 0 1 0 1.1 1.1 1.1 1.1 0 0 0-1.1-1.1z" />
+        </svg>
+      ),
+    },
+    {
+      key: "tiktok",
+      href: settings?.tiktok_url,
+      label: "TikTok",
+      icon: (
+        <svg viewBox="0 0 24 24" className="size-5 fill-current" aria-hidden>
+          <path d="M19 8.2a6.6 6.6 0 0 1-3.8-1.2v7.1a5.3 5.3 0 1 1-5.3-5.3c.3 0 .6 0 .9.1v2.5a2.8 2.8 0 1 0 2 2.7V3h2.5a4.1 4.1 0 0 0 3.7 3.7z" />
+        </svg>
+      ),
+    },
+    {
+      key: "telegram",
+      href: settings?.telegram_url,
+      label: "Telegram",
+      icon: (
+        <svg viewBox="0 0 24 24" className="size-5 fill-current" aria-hidden>
+          <path d="M21.5 4.3 3.7 11.1c-1.2.5-1.2 1.2-.2 1.5l4.6 1.4 1.8 5.4c.2.6.1.9.8.9.5 0 .7-.2 1-.5l2.7-2.6 5.6 4.1c1 .6 1.8.3 2.1-.9L23 5.6c.3-1.3-.5-1.9-1.5-1.3z" />
+        </svg>
+      ),
+    },
+    {
+      key: "youtube",
+      href: settings?.youtube_url,
+      label: "YouTube",
+      icon: (
+        <svg viewBox="0 0 24 24" className="size-5 fill-current" aria-hidden>
+          <path d="M23 12.2s0-3.2-.4-4.7a2.9 2.9 0 0 0-2-2C18.9 5 12 5 12 5s-6.9 0-8.6.5a2.9 2.9 0 0 0-2 2C1 9 1 12.2 1 12.2s0 3.2.4 4.7a2.9 2.9 0 0 0 2 2c1.7.5 8.6.5 8.6.5s6.9 0 8.6-.5a2.9 2.9 0 0 0 2-2c.4-1.5.4-4.7.4-4.7zM9.8 15.5v-6.6l5.8 3.3z" />
+        </svg>
+      ),
+    },
+  ].filter((item) => !!item.href?.trim());
 
   return (
-    <footer className="border-t border-border bg-card">
-      <div className="mx-auto max-w-[1400px] px-5 py-16 md:px-10 md:py-20 lg:px-14">
-        <div className="grid gap-12 sm:grid-cols-2 xl:grid-cols-12 xl:gap-8">
-          <div className="xl:col-span-3">
-            <h3 className="font-display text-2xl font-medium tracking-tight text-foreground">
-              {companyName}
-            </h3>
-            {settings?.company_description ? (
-              <p className="text-muted-foreground mt-4 max-w-sm text-sm leading-relaxed">
-                {settings.company_description}
-              </p>
-            ) : null}
-          </div>
+    <footer className="relative overflow-hidden border-t border-border/60">
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgb(201_169_110_/_0.1),transparent_55%),linear-gradient(180deg,rgb(0_0_0_/_0.02),transparent)]"
+        aria-hidden
+      />
 
-          <div className="xl:col-span-2">
-            <h4 className="text-showroom-accent mb-5 text-xs tracking-[0.28em] uppercase">
-              {t(locale, "footer", "contact")}
-            </h4>
-            <div className="space-y-3 text-sm text-foreground">
-              <PhoneLinkList
-                fields={[settings?.phone_number]}
-                className="space-y-3"
-                itemClassName="text-sm text-foreground"
-              />
-              {settings?.email_addresses?.map((entry) => (
-                <div key={entry.id}>
-                  <a
-                    href={`mailto:${entry.email}`}
-                    className="transition hover:text-[var(--gold)]"
-                  >
-                    {entry.label ? `${entry.label}: ` : ""}
-                    {entry.email}
-                  </a>
-                </div>
-              ))}
-              {waLink ? (
-                <a
-                  href={waLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  dir="ltr"
-                  className="inline-flex flex-wrap items-center gap-2.5 transition hover:text-[var(--gold)]"
-                  style={{ unicodeBidi: "plaintext" }}
-                >
-                  <MessageCircle className="size-4 shrink-0 opacity-60" />
-                  <span className="whitespace-nowrap">
-                    {t(locale, "common", "whatsapp")}
-                  </span>
-                  {settings?.whatsapp_number ? (
-                    <PhoneText
-                      phone={settings.whatsapp_number}
-                      className="text-muted-foreground"
-                    />
-                  ) : null}
-                </a>
-              ) : null}
-            </div>
-          </div>
+      <div className="relative mx-auto max-w-[1400px] px-5 py-16 md:px-10 md:py-20 lg:px-14 lg:py-24">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 lg:gap-7">
+          {/* Column 1 — Brand */}
+          <FooterPanel delay={0}>
+            <PanelHeading>{t(locale, "footer", "brand")}</PanelHeading>
+            <Link href="/" className="group inline-flex items-center gap-3">
+              {settings?.company_logo ? (
+                <span className="relative size-14 overflow-hidden rounded-2xl border border-[var(--gold)]/20 bg-background/40 shadow-sm">
+                  <Image
+                    src={settings.company_logo}
+                    alt={companyName}
+                    fill
+                    className="object-contain p-1.5 transition duration-500 group-hover:scale-105"
+                    sizes="56px"
+                  />
+                </span>
+              ) : (
+                <span className="flex size-14 items-center justify-center rounded-2xl border border-[var(--gold)]/25 bg-[var(--gold)]/10 font-display text-xl text-[var(--gold)]">
+                  {companyName.slice(0, 1)}
+                </span>
+              )}
+              <span className="font-display text-xl font-medium tracking-tight text-foreground transition group-hover:text-[var(--gold)] md:text-2xl">
+                {companyName}
+              </span>
+            </Link>
+            <p className="text-muted-foreground mt-5 line-clamp-2 text-sm leading-relaxed md:text-[15px]">
+              {description}
+            </p>
+          </FooterPanel>
 
-          <div className="xl:col-span-3">
-            <h4 className="text-showroom-accent mb-5 text-xs tracking-[0.28em] uppercase">
-              {t(locale, "footer", "location")}
-            </h4>
+          {/* Column 2 — Location */}
+          <FooterPanel delay={0.06}>
+            <PanelHeading>{t(locale, "footer", "location")}</PanelHeading>
             {office && office.latitude != null && office.longitude != null ? (
-              <div className="space-y-4">
+              <div className="flex flex-1 flex-col gap-4">
                 <LazyGoogleMap
                   latitude={office.latitude}
                   longitude={office.longitude}
                   title={office.name}
                   variant="preview"
-                  className="border border-border/60 shadow-sm"
+                  className="min-h-[168px] rounded-[18px] border border-white/20 shadow-inner dark:border-white/10"
                 />
-                <LocationDetails
-                  office={office}
-                  locale={locale}
-                  compact
-                  showDirections
-                />
+                <div className="flex items-start gap-2.5 text-sm leading-relaxed">
+                  <MapPin className="mt-0.5 size-4 shrink-0 text-[var(--gold)]" />
+                  <p className="text-foreground/90">{addressLine}</p>
+                </div>
+                {directionsHref ? (
+                  <ButtonLink
+                    href={directionsHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="gold"
+                    className="mt-auto h-11 rounded-[16px]"
+                  >
+                    <Navigation className="size-4" />
+                    {t(locale, "location", "get_directions")}
+                  </ButtonLink>
+                ) : null}
               </div>
             ) : (
               <p className="text-muted-foreground text-sm">
                 {t(locale, "contact", "map_unavailable")}
               </p>
             )}
-          </div>
+          </FooterPanel>
 
-          <div className="xl:col-span-2">
-            <h4 className="text-showroom-accent mb-5 text-xs tracking-[0.28em] uppercase">
-              {t(locale, "footer", "follow")}
-            </h4>
-            <div className="flex flex-wrap gap-3">
-              {settings?.facebook_url ? (
-                <a
-                  href={settings.facebook_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex size-11 items-center justify-center rounded-full border border-border transition hover:border-[var(--gold)] hover:text-[var(--gold)]"
-                  aria-label="Facebook"
-                >
-                  <Share2 className="size-4" />
-                </a>
-              ) : null}
-              {settings?.instagram_url ? (
-                <a
-                  href={settings.instagram_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex size-11 items-center justify-center rounded-full border border-border transition hover:border-[var(--gold)] hover:text-[var(--gold)]"
-                  aria-label="Instagram"
-                >
-                  <Share2 className="size-4" />
-                </a>
-              ) : null}
-              {settings?.tiktok_url ? (
-                <a
-                  href={settings.tiktok_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex size-11 items-center justify-center rounded-full border border-border text-xs font-bold transition hover:border-primary hover:text-primary"
-                  aria-label="TikTok"
-                >
-                  TT
-                </a>
-              ) : null}
-              {settings?.telegram_url ? (
-                <a
-                  href={settings.telegram_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex size-11 items-center justify-center rounded-full border border-border text-xs font-bold transition hover:border-[var(--gold)] hover:text-[var(--gold)]"
-                  aria-label="Telegram"
-                >
-                  TG
-                </a>
-              ) : null}
-              {!settings?.facebook_url &&
-              !settings?.instagram_url &&
-              !settings?.tiktok_url &&
-              !settings?.telegram_url ? (
-                <span className="text-showroom-muted inline-flex size-11 items-center justify-center rounded-full border border-dashed border-border">
-                  <Share2 className="size-4 opacity-40" />
-                </span>
-              ) : null}
+          {/* Column 3 — Contact cards */}
+          <FooterPanel delay={0.12}>
+            <PanelHeading>{t(locale, "footer", "contact")}</PanelHeading>
+            <div className="flex flex-1 flex-col gap-3">
+              <ContactMiniCard
+                icon={<Phone className="size-4" />}
+                title={t(locale, "location", "card_phone")}
+              >
+                <PhoneLinkList
+                  fields={[settings?.phone_number]}
+                  className="space-y-1"
+                  showIcon={false}
+                  itemClassName="text-sm font-medium text-foreground"
+                />
+                {!settings?.phone_number ? "—" : null}
+              </ContactMiniCard>
+
+              <ContactMiniCard
+                icon={<MessageCircle className="size-4" />}
+                title={t(locale, "common", "whatsapp")}
+                href={waLink ?? undefined}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {settings?.whatsapp_number ? (
+                  <PhoneText phone={settings.whatsapp_number} />
+                ) : (
+                  "—"
+                )}
+              </ContactMiniCard>
+
+              <ContactMiniCard
+                icon={<Mail className="size-4" />}
+                title={t(locale, "location", "card_email")}
+                href={
+                  primaryEmail ? `mailto:${primaryEmail.email}` : undefined
+                }
+              >
+                {primaryEmail ? (
+                  <span className="break-all">{primaryEmail.email}</span>
+                ) : (
+                  "—"
+                )}
+              </ContactMiniCard>
             </div>
-          </div>
+          </FooterPanel>
 
-          <div className="sm:col-span-2 xl:col-span-2">
-            <h4 className="text-showroom-accent mb-2 text-xs tracking-[0.28em] uppercase">
-              {t(locale, "footer", "newsletter_title")}
-            </h4>
-            <p className="text-showroom-muted mb-4 text-sm">
-              {t(locale, "footer", "newsletter_subtitle")}
-            </p>
-            <form onSubmit={subscribe} className="flex flex-col gap-3">
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={t(locale, "footer", "newsletter_placeholder")}
-                className="rounded-[12px] border-border bg-background"
-              />
-              <LuxuryButton type="submit" className="shrink-0">
-                {t(locale, "footer", "newsletter_submit")}
-              </LuxuryButton>
-            </form>
-          </div>
+          {/* Column 4 — Quick links */}
+          <FooterPanel delay={0.18}>
+            <PanelHeading>{t(locale, "footer", "quick_links")}</PanelHeading>
+            <nav aria-label={t(locale, "footer", "quick_links")}>
+              <ul className="space-y-1">
+                {QUICK_LINKS.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="group flex items-center justify-between rounded-[14px] px-3 py-2.5 text-sm text-foreground/85 transition duration-300 hover:bg-[var(--gold)]/10 hover:text-[var(--gold)]"
+                    >
+                      <span>
+                        {link.key === "home"
+                          ? t(locale, "footer", "home")
+                          : t(locale, "nav", link.key)}
+                      </span>
+                      <span
+                        className="text-[var(--gold)] opacity-0 transition group-hover:opacity-100"
+                        aria-hidden
+                      >
+                        ↗
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          </FooterPanel>
         </div>
+
+        {/* Social row */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.55, delay: 0.15 }}
+          className="mt-12 flex flex-col items-center gap-5 border-t border-border/50 pt-10"
+        >
+          <p className="text-showroom-accent text-[11px] tracking-[0.28em] uppercase">
+            {t(locale, "footer", "follow")}
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            {socials.length ? (
+              socials.map((item) => (
+                <SocialIcon
+                  key={item.key}
+                  href={item.href as string}
+                  label={item.label}
+                >
+                  {item.icon}
+                </SocialIcon>
+              ))
+            ) : (
+              <p className="text-muted-foreground text-sm">
+                {t(locale, "footer", "social_empty")}
+              </p>
+            )}
+          </div>
+        </motion.div>
       </div>
 
-      <div className="border-t border-border px-5 py-6 text-center md:px-10 lg:px-14">
-        <p className="text-muted-foreground text-xs tracking-wide">
-          © {year} Nova Home Decor. {t(locale, "footer", "rights")}.
-        </p>
-        <p className="text-muted-foreground/80 mt-2 text-[11px] tracking-wide">
+      {/* Bottom bar */}
+      <div className="relative border-t border-border/60 bg-card/40 backdrop-blur-md">
+        <div className="mx-auto flex max-w-[1400px] flex-col items-center justify-between gap-4 px-5 py-6 text-center md:flex-row md:px-10 md:text-start lg:px-14">
+          <p className="text-muted-foreground text-xs tracking-wide">
+            © {year} {companyName}. {t(locale, "footer", "rights")}.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs">
+            <Link
+              href="/privacy"
+              className="text-muted-foreground transition hover:text-[var(--gold)]"
+            >
+              {t(locale, "footer", "privacy")}
+            </Link>
+            <Link
+              href="/terms"
+              className="text-muted-foreground transition hover:text-[var(--gold)]"
+            >
+              {t(locale, "footer", "terms")}
+            </Link>
+          </div>
+        </div>
+        <p className="text-muted-foreground/70 pb-5 text-center text-[11px] tracking-wide">
           {t(locale, "footer", "credit")}
         </p>
       </div>

@@ -55,6 +55,7 @@ const defaultSettings = (): WebsiteSettings => ({
   instagram_url: null,
   tiktok_url: null,
   telegram_url: null,
+  youtube_url: null,
   email_addresses: [],
   seo_title: null,
   seo_description: null,

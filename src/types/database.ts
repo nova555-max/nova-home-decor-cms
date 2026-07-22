@@ -36,6 +36,7 @@ export type WebsiteSettings = {
   instagram_url: string | null;
   tiktok_url: string | null;
   telegram_url: string | null;
+  youtube_url?: string | null;
   email_addresses: EmailAddress[];
   seo_title: string | null;
   seo_description: string | null;

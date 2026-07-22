@@ -60,6 +60,7 @@ function toFormState(settings: WebsiteSettings | null) {
     instagram_url: settings?.instagram_url ?? "",
     tiktok_url: settings?.tiktok_url ?? "",
     telegram_url: settings?.telegram_url ?? "",
+    youtube_url: settings?.youtube_url ?? "",
     email_addresses: settings?.email_addresses ?? [],
     theme_colors: {
       ...DEFAULT_SHOWROOM_THEME,
@@ -155,6 +156,7 @@ export function SettingsForm({
     formData.append("instagram_url", form.instagram_url);
     formData.append("tiktok_url", form.tiktok_url);
     formData.append("telegram_url", form.telegram_url);
+    formData.append("youtube_url", form.youtube_url);
     formData.append("email_addresses", JSON.stringify(form.email_addresses));
     formData.append("theme_colors", JSON.stringify(form.theme_colors));
 
@@ -487,6 +489,18 @@ export function SettingsForm({
                 setForm((prev) => ({ ...prev, telegram_url: e.target.value }))
               }
               placeholder="https://t.me/..."
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="youtube_url">{t("settings.youtube")}</Label>
+            <Input
+              id="youtube_url"
+              type="url"
+              value={form.youtube_url}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, youtube_url: e.target.value }))
+              }
+              placeholder="https://youtube.com/..."
             />
           </div>
         </CardContent>

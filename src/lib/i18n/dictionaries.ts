@@ -84,6 +84,14 @@ const ku = {
     contact: "پەیوەندی",
     follow: "شوێنمان بکەوە",
     location: "شوێن",
+    brand: "براند",
+    quick_links: "لینکی خێرا",
+    home: "سەرەکی",
+    privacy: "سیاسەتی نهێنی",
+    terms: "مەرج و ڕەزامەندی",
+    default_description:
+      "دەرگا، پەنجەرە، چێشتخانە و دیکۆری ماڵی پریمیۆم بۆ شوێنێکی جیاواز.",
+    social_empty: "لینکی تۆڕە کۆمەڵایەتییەکان لە ڕێکخستنەکان زیاد بکە.",
     /** Platform-locked — never expose in CMS */
     rights: "هەموو مافەکان پارێزراون",
     /** Platform-locked — never expose in CMS */
@@ -94,6 +102,15 @@ const ku = {
     newsletter_placeholder: "ئیمەیڵەکەت بنووسە",
     newsletter_submit: "بەشداربوون",
     newsletter_success: "سوپاس! بەشداریت تۆمارکرا",
+  },
+  legal: {
+    privacy_title: "سیاسەتی نهێنی",
+    privacy_body:
+      "Nova Home Decor زانیاری پەیوەندی تۆ تەنها بۆ وەڵامدانەوەی داواکاری و پەیوەندی بازرگانی بەکاردەهێنێت. زانیارییەکان بەبێ ڕەزامەندی تۆ نافرۆشرێن یان هاوبەش ناکرێن، جگە لەو کاتانەی یاسا پێویستی پێدەکات.",
+    terms_title: "مەرج و ڕەزامەندی",
+    terms_body:
+      "بە بەکارهێنانی ماڵپەڕی Nova Home Decor، ڕەزامەندی دەدەیت لەسەر مەرجەکانی خزمەتگوزاری. ناوەڕۆک و وێنەکان مافی کۆمپانیان. نرخ و بەردەستی بەرهەم لەوانەیە بگۆڕدرێن.",
+    back_home: "گەڕانەوە بۆ سەرەکی",
   },
   location: {
     title: "شوێنمان",
@@ -316,6 +333,14 @@ const ar = {
     contact: "تواصل",
     follow: "تابعنا",
     location: "الموقع",
+    brand: "العلامة",
+    quick_links: "روابط سريعة",
+    home: "الرئيسية",
+    privacy: "سياسة الخصوصية",
+    terms: "الشروط والأحكام",
+    default_description:
+      "أبواب ونوافذ ومطابخ وديكور منزلي فاخر لمساحات استثنائية.",
+    social_empty: "أضف روابط التواصل من الإعدادات.",
     /** Platform-locked — never expose in CMS */
     rights: "جميع الحقوق محفوظة",
     /** Platform-locked — never expose in CMS */
@@ -325,6 +350,15 @@ const ar = {
     newsletter_placeholder: "أدخل بريدك الإلكتروني",
     newsletter_submit: "اشتراك",
     newsletter_success: "شكراً! تم تسجيل اشتراكك",
+  },
+  legal: {
+    privacy_title: "سياسة الخصوصية",
+    privacy_body:
+      "تستخدم Nova Home Decor بيانات التواصل الخاصة بك فقط للرد على الطلبات والتواصل التجاري. لا نبيع بياناتك ولا نشاركها دون موافقتك، إلا إذا تطلب القانون ذلك.",
+    terms_title: "الشروط والأحكام",
+    terms_body:
+      "باستخدام موقع Nova Home Decor فإنك توافق على شروط الخدمة. المحتوى والصور ملك للشركة. قد تتغير الأسعار والتوفر.",
+    back_home: "العودة للرئيسية",
   },
   location: {
     title: "موقعنا",
@@ -547,6 +581,14 @@ const en = {
     contact: "Contact",
     follow: "Follow us",
     location: "Location",
+    brand: "Brand",
+    quick_links: "Quick Links",
+    home: "Home",
+    privacy: "Privacy Policy",
+    terms: "Terms",
+    default_description:
+      "Premium doors, windows, kitchens and home décor for exceptional spaces.",
+    social_empty: "Add social links in Settings.",
     /** Platform-locked — never expose in CMS */
     rights: "All rights reserved",
     /** Platform-locked — never expose in CMS */
@@ -556,6 +598,15 @@ const en = {
     newsletter_placeholder: "Enter your email",
     newsletter_submit: "Subscribe",
     newsletter_success: "Thank you! You're subscribed",
+  },
+  legal: {
+    privacy_title: "Privacy Policy",
+    privacy_body:
+      "Nova Home Decor uses your contact details only to respond to enquiries and for business communication. We do not sell or share your data without consent, except where required by law.",
+    terms_title: "Terms of Service",
+    terms_body:
+      "By using the Nova Home Decor website you agree to our terms of service. Content and imagery belong to the company. Prices and availability may change.",
+    back_home: "Back to Home",
   },
   location: {
     title: "Our Location",

@@ -302,6 +302,7 @@ export async function updateWebsiteSettings(
     instagram_url: (formData.get("instagram_url") as string) || null,
     tiktok_url: (formData.get("tiktok_url") as string) || null,
     telegram_url: (formData.get("telegram_url") as string) || null,
+    youtube_url: (formData.get("youtube_url") as string) || null,
     email_addresses,
     theme_colors,
   };
