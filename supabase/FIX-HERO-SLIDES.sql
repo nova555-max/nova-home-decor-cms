@@ -1,4 +1,5 @@
--- Hero Slider: up to 10 homepage background slides with optional CTA + schedule
+-- One-shot fix: create public.hero_slides + RLS + storage + realtime + schema reload.
+-- Paste into Supabase SQL Editor and Run if migration 029 was never applied.
 
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
 RETURNS trigger
@@ -64,7 +65,6 @@ CREATE POLICY "Admins manage hero slides"
 GRANT SELECT ON public.hero_slides TO anon, authenticated;
 GRANT ALL ON public.hero_slides TO service_role;
 
--- Cap at 10 active+inactive rows via trigger (admins can soft-disable instead of exceeding)
 CREATE OR REPLACE FUNCTION public.hero_slides_enforce_max_count()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -84,9 +84,6 @@ CREATE TRIGGER trg_hero_slides_max_count
   BEFORE INSERT ON public.hero_slides
   FOR EACH ROW
   EXECUTE FUNCTION public.hero_slides_enforce_max_count();
-
--- Storage: ensure hero-slides folder follows same cms-uploads admin policies (007/008).
--- Explicit path policies for clarity (idempotent with existing bucket policies).
 
 DROP POLICY IF EXISTS "Admins upload hero slides" ON storage.objects;
 CREATE POLICY "Admins upload hero slides"

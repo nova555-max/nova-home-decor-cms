@@ -38,6 +38,7 @@ export function useRealtimeSync(enabled = true) {
       "projects",
       "gallery_items",
       "website_content_strings",
+      "hero_slides",
     ] as const;
 
     void (async () => {

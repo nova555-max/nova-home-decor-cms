@@ -54,13 +54,19 @@ async function fetchPublicHeroSlides(): Promise<HeroSlide[]> {
         .from("hero_slides")
         .select("*")
         .eq("is_active", true)
-        .order("display_order", { ascending: true });
+        .order("display_order", { ascending: true })
+        .order("created_at", { ascending: true });
 
-      if (error || !data?.length) return [];
+      if (error) {
+        console.error("[hero-slides] public fetch", error.message);
+        return [];
+      }
+      if (!data?.length) return [];
 
       const now = Date.now();
       return (data as HeroSlide[])
         .filter((s) => isPubliclyVisible(s, now))
+        .sort((a, b) => a.display_order - b.display_order)
         .slice(0, 10);
     })(),
     STARTUP_QUERY_TIMEOUT_MS,
@@ -71,8 +77,8 @@ async function fetchPublicHeroSlides(): Promise<HeroSlide[]> {
 
 export const getPublicHeroSlides = unstable_cache(
   fetchPublicHeroSlides,
-  ["public-hero-slides"],
-  { tags: [CACHE_TAGS.heroSlides], revalidate: 60 },
+  ["public-hero-slides-v2"],
+  { tags: [CACHE_TAGS.heroSlides], revalidate: 30 },
 );
 
 export async function getAdminHeroSlides(): Promise<HeroSlide[]> {
@@ -89,6 +95,14 @@ export async function getAdminHeroSlides(): Promise<HeroSlide[]> {
 
   if (error) {
     console.error("[hero-slides] admin fetch", error.message);
+    if (
+      /hero_slides/i.test(error.message) &&
+      /schema cache|does not exist|could not find the table/i.test(error.message)
+    ) {
+      console.error(
+        "[hero-slides] Apply supabase/FIX-HERO-SLIDES.sql (migration 029) in Supabase SQL Editor.",
+      );
+    }
     return [];
   }
 

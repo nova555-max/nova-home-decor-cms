@@ -11,6 +11,19 @@ export function actionErrorMessage(message: string): string {
   }
 
   if (
+    lower.includes("hero_slides") &&
+    (lower.includes("schema cache") ||
+      lower.includes("does not exist") ||
+      lower.includes("could not find the table"))
+  ) {
+    return (
+      "Database table `public.hero_slides` is missing. " +
+      "Run `supabase/FIX-HERO-SLIDES.sql` (or migration 029) in the Supabase SQL Editor, " +
+      "then wait a few seconds for the schema cache to reload and retry."
+    );
+  }
+
+  if (
     lower.includes("bucket not found") ||
     lower.includes("does not exist") && lower.includes("bucket")
   ) {

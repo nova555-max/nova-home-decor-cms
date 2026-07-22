@@ -418,3 +418,47 @@ VALUES
   ('دیکۆراتی ماڵ', 'decorati-mal', '{"ku":"دیکۆراتی ماڵ","ar":"ديكور منزلي","en":"Home Decor"}'::jsonb, 2, true),
   ('دیکۆراتی تەلەفزیۆن', 'decorati-televizyon', '{"ku":"دیکۆراتی تەلەفزیۆن","ar":"ديكور تلفزيون","en":"TV Decor"}'::jsonb, 3, true)
 ON CONFLICT (slug) DO NOTHING;
+
+-- ========== 029_hero_slides.sql ==========
+-- Full idempotent script also lives at supabase/FIX-HERO-SLIDES.sql
+
+CREATE TABLE IF NOT EXISTS public.hero_slides (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  image_url TEXT NOT NULL,
+  title TEXT,
+  subtitle TEXT,
+  button_text TEXT,
+  button_link TEXT,
+  display_order INTEGER NOT NULL DEFAULT 0,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  starts_at TIMESTAMPTZ,
+  ends_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT hero_slides_schedule_check CHECK (
+    starts_at IS NULL OR ends_at IS NULL OR starts_at <= ends_at
+  )
+);
+
+ALTER TABLE public.hero_slides ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public read active hero slides" ON public.hero_slides;
+CREATE POLICY "Public read active hero slides"
+  ON public.hero_slides FOR SELECT TO anon, authenticated
+  USING (
+    is_active = true
+    AND (starts_at IS NULL OR starts_at <= now())
+    AND (ends_at IS NULL OR ends_at >= now())
+  );
+
+DROP POLICY IF EXISTS "Admins manage hero slides" ON public.hero_slides;
+CREATE POLICY "Admins manage hero slides"
+  ON public.hero_slides FOR ALL TO authenticated
+  USING (public.is_active_admin())
+  WITH CHECK (public.is_active_admin());
+
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.hero_slides;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
