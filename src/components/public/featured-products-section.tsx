@@ -54,7 +54,7 @@ function ProductGrid({
           </CardHeader>
           <CardContent>
             {product.price != null ? (
-              <p className="font-semibold">{formatPrice(product.price)}</p>
+              <p className="font-semibold">{formatPrice(product.price, product.price_currency)}</p>
             ) : null}
           </CardContent>
         </Card>

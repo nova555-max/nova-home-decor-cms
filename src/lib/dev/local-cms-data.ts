@@ -171,6 +171,7 @@ export async function upsertLocalProduct(
     description: input.description ?? null,
     description_i18n: input.description_i18n ?? null,
     price: input.price ?? null,
+    price_currency: input.price_currency ?? null,
     sku: input.sku ?? null,
     image_url: input.image_url ?? null,
     images: input.images ?? [],

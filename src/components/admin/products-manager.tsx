@@ -18,6 +18,7 @@ import {
   type Category,
   type MediaAsset,
   type Product,
+  type ProductPriceCurrency,
   type ProductStatus,
 } from "@/types/database";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
@@ -58,6 +59,7 @@ const emptyProduct = {
   slug: "",
   category_id: "",
   price: "",
+  price_currency: "IQD" as ProductPriceCurrency,
   sku: "",
   images: [] as string[],
   video_url: "" as string,
@@ -120,6 +122,7 @@ export function ProductsManager({
       slug: product.slug,
       category_id: product.category_id ?? "",
       price: product.price?.toString() ?? "",
+      price_currency: product.price_currency ?? "IQD",
       sku: product.sku ?? "",
       images: product.images?.length
         ? product.images
@@ -176,7 +179,11 @@ export function ProductsManager({
         ),
     );
     formData.append("category_id", form.category_id);
-    formData.append("price", form.price);
+    formData.append("price", form.price.trim());
+    formData.append(
+      "price_currency",
+      form.price.trim() ? form.price_currency : "",
+    );
     formData.append("sku", form.sku);
     formData.append("images", JSON.stringify(form.images));
     formData.append("video_url", form.video_url);
@@ -419,19 +426,45 @@ export function ProductsManager({
                 setForm((prev) => ({ ...prev, description_i18n }))
               }
             />
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="price">{t("products.price")}</Label>
+                <Label htmlFor="price">{t("products.price_optional")}</Label>
                 <Input
                   id="price"
                   type="number"
+                  min="0"
                   step="0.01"
+                  inputMode="decimal"
+                  placeholder="—"
                   value={form.price}
                   onChange={(e) =>
                     setForm((prev) => ({ ...prev, price: e.target.value }))
                   }
                 />
+                <p className="text-muted-foreground text-xs">
+                  {t("products.price_hint")}
+                </p>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="price_currency">{t("products.currency")}</Label>
+                <select
+                  id="price_currency"
+                  className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                  value={form.price_currency}
+                  disabled={!form.price.trim()}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      price_currency: e.target.value as ProductPriceCurrency,
+                    }))
+                  }
+                >
+                  <option value="IQD">{t("products.currency_iqd")}</option>
+                  <option value="USD">{t("products.currency_usd")}</option>
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="sort_order">{t("common.sort_order")}</Label>
                 <Input

@@ -197,6 +197,9 @@ export type Category = {
 
 export type ProductStatus = "draft" | "published";
 
+/** Product price currency — only relevant when `price` is set. */
+export type ProductPriceCurrency = "USD" | "IQD";
+
 export type Product = {
   id: string;
   category_id: string | null;
@@ -205,7 +208,10 @@ export type Product = {
   description: string | null;
   name_i18n: LocalizedText | null;
   description_i18n: LocalizedText | null;
+  /** Optional — leave empty in CMS to hide price on the storefront. */
   price: number | null;
+  /** USD (dollar) or IQD (Iraqi dinar). Null when price is unset. */
+  price_currency: ProductPriceCurrency | null;
   /** Warehouse / inventory product code. */
   sku: string | null;
   image_url: string | null;

@@ -32,7 +32,7 @@ import type { AiChatMeta, ChatMessage } from "@/lib/ai/types";
 import type { AiConsultantModule, CmsProductCard } from "@/lib/ai/search/types";
 import { t } from "@/lib/i18n";
 import { coerceToText } from "@/lib/i18n/cms-text";
-import { formatInternationalPhone } from "@/lib/format";
+import { formatInternationalPhone, formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useDirection } from "@/hooks";
 
@@ -161,7 +161,7 @@ function ProductCards({
               ) : null}
               {product.price != null ? (
                 <p className="text-[var(--gold)] mt-1 text-[10px] font-semibold">
-                  {product.price.toLocaleString()}
+                  {formatPrice(product.price, product.priceCurrency)}
                 </p>
               ) : null}
             </div>
@@ -250,7 +250,9 @@ function QuotePrintPanel({
                   <td>{p.name}</td>
                   <td>{p.category ?? "—"}</td>
                   <td className="gold">
-                    {p.price != null ? p.price.toLocaleString() : "—"}
+                    {p.price != null
+                      ? formatPrice(p.price, p.priceCurrency)
+                      : "—"}
                   </td>
                 </tr>
               ))}

@@ -35,12 +35,32 @@ export function createEntitySlug(text: string, prefix = "item"): string {
   return `${prefix}-${Date.now().toString(36)}`;
 }
 
-export function formatPrice(price: number | null | undefined): string {
-  if (price == null) return "";
+export type PriceCurrency = "USD" | "IQD";
+
+/**
+ * Format an optional product price.
+ * Returns "" when price is null/undefined so callers can hide the field.
+ */
+export function formatPrice(
+  price: number | null | undefined,
+  currency: PriceCurrency | string | null | undefined = "USD",
+): string {
+  if (price == null || Number.isNaN(price)) return "";
+
+  const code: PriceCurrency = currency === "IQD" ? "IQD" : "USD";
+
+  if (code === "IQD") {
+    // Iraqi dinar — show with دينار / IQD (Intl IQD often uses "IQD")
+    const amount = new Intl.NumberFormat("en-US", {
+      maximumFractionDigits: 0,
+    }).format(price);
+    return `${amount} IQD`;
+  }
+
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-    maximumFractionDigits: 0,
+    maximumFractionDigits: 2,
   }).format(price);
 }
 

@@ -114,7 +114,7 @@ function ProductGrid({
             </h3>
             {product.price != null ? (
               <p className="text-muted-foreground text-sm">
-                {formatPrice(product.price)}
+                {formatPrice(product.price, product.price_currency)}
               </p>
             ) : null}
           </div>

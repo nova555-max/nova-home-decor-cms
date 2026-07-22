@@ -197,7 +197,7 @@ function SortableRow({
         {product.category?.name ?? "—"}
       </TableCell>
       <TableCell data-label={t("products.price")}>
-        {formatPrice(product.price) || "—"}
+        {formatPrice(product.price, product.price_currency) || "—"}
       </TableCell>
       <TableCell data-label={t("products.status")}>
         <div className="flex flex-wrap gap-1">
@@ -262,7 +262,7 @@ function StaticProductTable({
                 {product.category?.name ?? "—"}
               </TableCell>
               <TableCell data-label={t("products.price")}>
-                {formatPrice(product.price) || "—"}
+                {formatPrice(product.price, product.price_currency) || "—"}
               </TableCell>
               <TableCell data-label={t("products.status")}>
                 <div className="flex flex-wrap gap-1">

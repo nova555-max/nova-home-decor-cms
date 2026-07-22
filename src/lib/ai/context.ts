@@ -5,7 +5,7 @@ import type { CmsSearchResult } from "@/lib/ai/search/types";
 function formatProduct(p: CmsSearchResult["products"][number]): string {
   const price =
     p.price != null
-      ? ` | price: ${p.price}`
+      ? ` | price: ${p.price} ${p.priceCurrency ?? "USD"}`
       : "";
   const reasons =
     p.matchReasons.length > 0

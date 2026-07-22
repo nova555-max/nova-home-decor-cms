@@ -50,6 +50,7 @@ export type CmsProductCard = {
   slug: string;
   category: string | null;
   price: number | null;
+  priceCurrency: "USD" | "IQD" | null;
   imageUrl: string | null;
   description: string | null;
   matchReasons: string[];

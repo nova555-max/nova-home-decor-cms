@@ -316,6 +316,7 @@ export function toProductCard(
     slug: product.slug,
     category: cat ? categoryName(cat, locale) : null,
     price: product.price,
+    priceCurrency: product.price_currency ?? null,
     imageUrl: product.images?.[0] ?? product.image_url,
     description: desc ? desc.slice(0, 200) : null,
     matchReasons: product.matchReasons,

@@ -540,6 +540,12 @@ export async function saveProduct(
       description: descI18n.ku || descI18n.en || descI18n.ar || null,
       description_i18n: descI18n,
       price: formData.get("price") ? Number(formData.get("price")) : null,
+      price_currency: (() => {
+        const rawPrice = String(formData.get("price") ?? "").trim();
+        if (!rawPrice) return null;
+        const cur = String(formData.get("price_currency") ?? "IQD").toUpperCase();
+        return cur === "USD" ? "USD" : "IQD";
+      })(),
       sku: (formData.get("sku") as string)?.trim() || null,
       image_url: images[0] || (formData.get("image_url") as string) || null,
       images,
@@ -590,6 +596,12 @@ export async function saveProduct(
     description: descI18n.ku || descI18n.en || descI18n.ar || null,
     description_i18n: descI18n,
     price: formData.get("price") ? Number(formData.get("price")) : null,
+    price_currency: (() => {
+      const rawPrice = String(formData.get("price") ?? "").trim();
+      if (!rawPrice) return null;
+      const cur = String(formData.get("price_currency") ?? "IQD").toUpperCase();
+      return cur === "USD" ? "USD" : "IQD";
+    })(),
     sku: (formData.get("sku") as string)?.trim() || null,
     image_url: images[0] || (formData.get("image_url") as string) || null,
     images,
@@ -693,6 +705,7 @@ export async function duplicateProduct(
       description: product.description,
       description_i18n: product.description_i18n,
       price: product.price,
+      price_currency: product.price_currency ?? null,
       sku: product.sku,
       image_url: product.image_url,
       images: product.images,
@@ -738,6 +751,7 @@ export async function duplicateProduct(
     description: product.description,
     description_i18n: product.description_i18n,
     price: product.price,
+    price_currency: product.price_currency ?? null,
     sku: product.sku,
     image_url: product.image_url,
     images: product.images,
