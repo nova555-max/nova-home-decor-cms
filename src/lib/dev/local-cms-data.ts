@@ -136,6 +136,17 @@ export async function listLocalProducts(): Promise<Product[]> {
     .sort((a, b) => a.sort_order - b.sort_order);
 }
 
+/** All product slugs including soft-deleted — for uniqueness checks. */
+export async function listLocalProductSlugs(
+  excludeId?: string | null,
+): Promise<string[]> {
+  const items = await readJson<Product[]>("products.json", []);
+  return items
+    .filter((item) => (excludeId ? item.id !== excludeId : true))
+    .map((item) => item.slug)
+    .filter(Boolean);
+}
+
 export async function upsertLocalProduct(
   input: Partial<Product> & Pick<Product, "name" | "slug">,
 ): Promise<Product> {

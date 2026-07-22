@@ -20,6 +20,7 @@ import {
   upsertLocalProduct,
   upsertLocalProject,
   listLocalProducts,
+  listLocalProductSlugs,
 } from "@/lib/dev/local-cms-data";
 import { isLocalDevCms, needsServiceRoleForWrites, RLS_DEV_HINT, SERVICE_ROLE_REQUIRED_MSG, UPLOAD_SERVICE_ROLE_REQUIRED_MSG } from "@/lib/dev/local-mode";
 import {
@@ -32,6 +33,10 @@ import {
   saveLocalUpload,
 } from "@/lib/dev/local-uploads";
 import { createEntitySlug, slugify } from "@/lib/format";
+import {
+  ensureUniqueSlugFromList,
+  resolveUniqueProductSlug,
+} from "@/lib/products/unique-slug";
 import { normalizePhone, serializePhoneList } from "@/lib/phone/e164";
 import { createCmsClient } from "@/lib/supabase/cms-client";
 import { createStorageWriteClient } from "@/lib/supabase/storage-client";
@@ -454,6 +459,10 @@ export async function saveProduct(
   await requirePermission("products");
   const id = formData.get("id") as string | null;
 
+  if (process.env.NODE_ENV === "development") {
+    console.info("[products:save] start", { id: id ?? "new" });
+  }
+
   const nameI18nResult = parseFormJson<Record<string, string>>(
     formData.get("name_i18n"),
     {},
@@ -493,8 +502,85 @@ export async function saveProduct(
     return { success: false, error: "Product name is required." };
   }
 
-  const slug = slugify((formData.get("slug") as string) || name);
-  const categoryId = formData.get("category_id") as string;
+  const categoryId = (formData.get("category_id") as string) || "";
+  const requestedSlug =
+    ((formData.get("slug") as string) || "").trim() || name;
+
+  if (!isLocalDevCms()) {
+    const invalidMedia = findInvalidPersistedMediaUrls(
+      images.map((url, index) => ({
+        url,
+        label: `Product image ${index + 1}`,
+      })),
+    );
+    if (invalidMedia) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("[products:save] invalid-media", invalidMedia);
+      }
+      return { success: false, error: invalidMedia };
+    }
+  }
+
+  if (isLocalDevCms()) {
+    const slug = ensureUniqueSlugFromList(
+      requestedSlug,
+      await listLocalProductSlugs(id),
+    );
+
+    if (process.env.NODE_ENV === "development") {
+      console.info("[products:save] local", { slug, images: images.length });
+    }
+
+    const saved = await upsertLocalProduct({
+      id: id ?? undefined,
+      name,
+      name_i18n: nameI18n,
+      slug,
+      category_id: categoryId || null,
+      description: descI18n.ku || descI18n.en || descI18n.ar || null,
+      description_i18n: descI18n,
+      price: formData.get("price") ? Number(formData.get("price")) : null,
+      sku: (formData.get("sku") as string)?.trim() || null,
+      image_url: images[0] || (formData.get("image_url") as string) || null,
+      images,
+      video_url: (formData.get("video_url") as string)?.trim() || null,
+      related_product_ids: relatedResult.value,
+      status: ((formData.get("status") as string) || "draft") as Product["status"],
+      is_featured: formData.get("is_featured") === "true",
+      is_active: formData.get("is_active") === "true",
+      sort_order: Number(formData.get("sort_order") || 0),
+      seo_title: (formData.get("seo_title") as string) || null,
+      seo_description: (formData.get("seo_description") as string) || null,
+      og_image: (formData.get("og_image") as string) || null,
+    });
+    revalidateTag(CACHE_TAGS.products);
+    revalidateTag(CACHE_TAGS.dashboard);
+    return { success: true, data: saved };
+  }
+
+  if (categoryId) {
+    const supabaseCheck = await createCmsClient();
+    const { data: categoryRow, error: categoryError } = await supabaseCheck
+      .from("categories")
+      .select("id")
+      .eq("id", categoryId)
+      .maybeSingle();
+
+    if (categoryError) {
+      return {
+        success: false,
+        error: actionErrorMessage(categoryError.message),
+      };
+    }
+    if (!categoryRow) {
+      return { success: false, error: "Selected category was not found." };
+    }
+  }
+
+  const supabase = await createCmsClient();
+  const slug = await resolveUniqueProductSlug(supabase, requestedSlug, {
+    excludeId: id,
+  });
 
   const payload = {
     name,
@@ -518,20 +604,16 @@ export async function saveProduct(
     og_image: (formData.get("og_image") as string) || null,
   };
 
-  if (isLocalDevCms()) {
-    const saved = await upsertLocalProduct({
-      id: id ?? undefined,
-      ...payload,
-      status: payload.status as Product["status"],
+  if (process.env.NODE_ENV === "development") {
+    console.info("[products:save] supabase", {
+      id: id ?? "new",
+      slug,
+      category_id: payload.category_id,
+      images: images.length,
     });
-    revalidateTag(CACHE_TAGS.products);
-    revalidateTag(CACHE_TAGS.dashboard);
-    return { success: true, data: saved };
   }
 
-  const supabase = await createCmsClient();
-
-  const { data, error } = id
+  let { data, error } = id
     ? await supabase
         .from("products")
         .update(payload)
@@ -540,7 +622,36 @@ export async function saveProduct(
         .single()
     : await supabase.from("products").insert(payload).select("*").single();
 
+  // Race-safe retry once if unique slug still collided
+  if (
+    error &&
+    (error.message.includes("products_slug_key") ||
+      error.message.toLowerCase().includes("duplicate key"))
+  ) {
+    const retrySlug = await resolveUniqueProductSlug(supabase, `${slug}-x`, {
+      excludeId: id,
+    });
+    const retryPayload = { ...payload, slug: retrySlug };
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[products:save] slug-collision-retry", {
+        from: slug,
+        to: retrySlug,
+      });
+    }
+    const retry = id
+      ? await supabase
+          .from("products")
+          .update(retryPayload)
+          .eq("id", id)
+          .select("*")
+          .single()
+      : await supabase.from("products").insert(retryPayload).select("*").single();
+    data = retry.data;
+    error = retry.error;
+  }
+
   if (error) {
+    console.error("[products:save] error", error.message);
     return { success: false, error: actionErrorMessage(error.message) };
   }
 
@@ -575,7 +686,10 @@ export async function duplicateProduct(
       category_id: product.category_id,
       name: `${product.name} (Copy)`,
       name_i18n: product.name_i18n,
-      slug: `${product.slug}-copy-${Date.now().toString(36).slice(-4)}`,
+      slug: ensureUniqueSlugFromList(
+        `${product.slug}-copy`,
+        products.map((p) => p.slug),
+      ),
       description: product.description,
       description_i18n: product.description_i18n,
       price: product.price,
@@ -611,11 +725,16 @@ export async function duplicateProduct(
     };
   }
 
+  const copySlug = await resolveUniqueProductSlug(
+    supabase,
+    `${product.slug}-copy`,
+  );
+
   const copy = {
     category_id: product.category_id,
     name: `${product.name} (Copy)`,
     name_i18n: product.name_i18n,
-    slug: `${product.slug}-copy-${Date.now().toString(36).slice(-4)}`,
+    slug: copySlug,
     description: product.description,
     description_i18n: product.description_i18n,
     price: product.price,

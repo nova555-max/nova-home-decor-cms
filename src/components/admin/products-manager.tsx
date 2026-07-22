@@ -11,7 +11,7 @@ import {
   reorderProducts,
   saveProduct,
 } from "@/lib/actions/cms";
-import { slugify } from "@/lib/format";
+import { createEntitySlug } from "@/lib/format";
 import { emptyLocalized } from "@/lib/i18n";
 import {
   categoryName,
@@ -88,18 +88,24 @@ export function ProductsManager({
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const isBusy = isPending || isLocked;
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadFailed, setUploadFailed] = useState(false);
+  const isBusy = isPending || isLocked || isUploading;
 
   useUnsavedWarning(isDirty && open);
 
   const openCreate = () => {
     setEditingId(null);
     setForm(emptyProduct);
+    setUploadFailed(false);
+    setIsUploading(false);
     setOpen(true);
   };
 
   const openEdit = (product: Product) => {
     setEditingId(product.id);
+    setUploadFailed(false);
+    setIsUploading(false);
     setForm({
       name_i18n: {
         ku: product.name_i18n?.ku ?? product.name,
@@ -142,6 +148,21 @@ export function ProductsManager({
       return;
     }
 
+    if (isUploading) {
+      toast.error(t("products.wait_upload"));
+      return;
+    }
+
+    if (uploadFailed && form.images.length === 0) {
+      toast.error(t("products.fix_upload_first"));
+      return;
+    }
+
+    if (!editingId && form.images.length === 0) {
+      toast.error(t("products.image_required"));
+      return;
+    }
+
     const formData = new FormData();
     if (editingId) formData.append("id", editingId);
     formData.append("name_i18n", JSON.stringify(form.name_i18n));
@@ -149,7 +170,10 @@ export function ProductsManager({
     formData.append(
       "slug",
       form.slug ||
-        slugify(form.name_i18n.ku || form.name_i18n.en || form.name_i18n.ar),
+        createEntitySlug(
+          form.name_i18n.ku || form.name_i18n.en || form.name_i18n.ar,
+          "product",
+        ),
     );
     formData.append("category_id", form.category_id);
     formData.append("price", form.price);
@@ -428,7 +452,11 @@ export function ProductsManager({
               onChange={(images) => {
                 setIsDirty(true);
                 setForm((prev) => ({ ...prev, images }));
+                if (images.length > 0) setUploadFailed(false);
               }}
+              onUploadingChange={setIsUploading}
+              onUploadFailure={() => setUploadFailed(true)}
+              onUploadSuccess={() => setUploadFailed(false)}
               folder="products"
               max={8}
             />
@@ -442,17 +470,19 @@ export function ProductsManager({
             />
             <Button
               type="submit"
-              disabled={isBusy}
+              disabled={isBusy || (uploadFailed && form.images.length === 0)}
               className="w-full rounded-xl"
             >
               {isBusy ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : null}
-              {isBusy
-                ? t("common.saving")
-                : editingId
-                  ? t("common.save")
-                  : t("common.create")}
+              {isUploading
+                ? t("media.uploading")
+                : isBusy
+                  ? t("common.saving")
+                  : editingId
+                    ? t("common.save")
+                    : t("common.create")}
             </Button>
           </form>
         </DialogContent>

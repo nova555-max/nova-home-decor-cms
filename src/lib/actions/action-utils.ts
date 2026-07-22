@@ -2,6 +2,24 @@ import { RLS_DEV_HINT } from "@/lib/dev/local-mode";
 
 export function actionErrorMessage(message: string): string {
   const lower = message.toLowerCase();
+
+  if (
+    lower.includes("products_slug_key") ||
+    lower.includes("duplicate key") && lower.includes("slug")
+  ) {
+    return "A product with this slug already exists. The system will assign a unique slug automatically — please try saving again.";
+  }
+
+  if (
+    lower.includes("bucket not found") ||
+    lower.includes("does not exist") && lower.includes("bucket")
+  ) {
+    return (
+      "Storage bucket `cms-uploads` was not found. Create it in Supabase Storage (public) " +
+      "or run the project migrations, then retry the upload."
+    );
+  }
+
   if (
     lower.includes("row-level security") ||
     lower.includes("permission denied") ||

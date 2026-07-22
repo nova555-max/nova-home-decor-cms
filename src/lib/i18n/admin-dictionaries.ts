@@ -169,6 +169,10 @@ const ku = {
     draft: "ڕەشنووس",
     published: "بڵاوکراوە",
     preview: "پێشبینین",
+    image_required: "تکایە لانیکەم یەک وێنە بار بکە پێش دروستکردن.",
+    wait_upload: "چاوەڕێ بکە تا بارکردنی وێنە تەواو دەبێت.",
+    fix_upload_first:
+      "بارکردنی وێنە سەرکەوتوو نەبوو — دووبارە هەوڵبدەرەوە پێش پاشەکەوت.",
   },
   media: {
     upload: "بارکردن",
@@ -190,6 +194,8 @@ const ku = {
     invalid_video: "فایلەکە ڤیدیۆی دروست نییە",
     add_selected: "زیادکردن",
     delete_title: "سڕینەوەی وێنە",
+    retry: "دووبارە هەوڵبدەرەوە",
+    retry_all: "دووبارە هەموو",
     uploading: "باردەکرێت...",
   },
   seo: {
@@ -868,6 +874,9 @@ const ar = {
     draft: "مسودة",
     published: "منشور",
     preview: "معاينة",
+    image_required: "يرجى رفع صورة واحدة على الأقل قبل الإنشاء.",
+    wait_upload: "انتظر حتى يكتمل رفع الصور.",
+    fix_upload_first: "فشل رفع الصورة — أعد المحاولة قبل الحفظ.",
   },
   media: {
     upload: "رفع",
@@ -889,6 +898,8 @@ const ar = {
     invalid_video: "الملف ليس فيديو صالحاً",
     add_selected: "إضافة",
     delete_title: "حذف الصورة",
+    retry: "إعادة المحاولة",
+    retry_all: "إعادة الكل",
     uploading: "جاري الرفع...",
   },
   seo: {
@@ -1566,6 +1577,9 @@ const en = {
     draft: "Draft",
     published: "Published",
     preview: "Preview",
+    image_required: "Please upload at least one image before creating.",
+    wait_upload: "Wait until image upload finishes.",
+    fix_upload_first: "Image upload failed — retry before saving.",
   },
   media: {
     upload: "Upload",
@@ -1587,6 +1601,8 @@ const en = {
     invalid_video: "File is not a valid video",
     add_selected: "Add selected",
     delete_title: "Delete image",
+    retry: "Retry",
+    retry_all: "Retry all",
     uploading: "Uploading...",
   },
   seo: {
