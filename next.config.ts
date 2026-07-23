@@ -3,6 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import { resolvePublicEnvWithDefaults } from "./src/config/public-env-defaults";
+import { CONTENT_SECURITY_POLICY } from "./src/lib/security/csp";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -38,17 +39,13 @@ function serverActionOrigins(): string[] {
     addAllowedOrigin(origins, host);
   }
 
-  // Netlify site / deploy preview URLs (injected at build).
   addAllowedOrigin(origins, publicEnv.NEXT_PUBLIC_APP_URL);
   addAllowedOrigin(origins, process.env.URL ?? "");
   addAllowedOrigin(origins, process.env.DEPLOY_PRIME_URL ?? "");
   addAllowedOrigin(origins, process.env.DEPLOY_URL ?? "");
-  // Custom production domains
   addAllowedOrigin(origins, "https://nova-home-decor.com");
   addAllowedOrigin(origins, "https://www.nova-home-decor.com");
-  // Legacy Netlify subdomain (keep until DNS fully cut over)
   addAllowedOrigin(origins, "https://timely-klepon-1dc4f9.netlify.app");
-  // Optional legacy Cloudflare host if still referenced.
   addAllowedOrigin(
     origins,
     "https://nova-home-decor-cms.novahome756.workers.dev",
@@ -76,6 +73,29 @@ const nextConfig: NextConfig = {
     serverActions: {
       allowedOrigins: serverActionOrigins(),
     },
+  },
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: CONTENT_SECURITY_POLICY,
+          },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
+          },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=(self)",
+          },
+        ],
+      },
+    ];
   },
   images: {
     formats: ["image/avif", "image/webp"],
