@@ -43,6 +43,11 @@ function serverActionOrigins(): string[] {
   addAllowedOrigin(origins, process.env.URL ?? "");
   addAllowedOrigin(origins, process.env.DEPLOY_PRIME_URL ?? "");
   addAllowedOrigin(origins, process.env.DEPLOY_URL ?? "");
+  // Custom production domains
+  addAllowedOrigin(origins, "https://nova-home-decor.com");
+  addAllowedOrigin(origins, "https://www.nova-home-decor.com");
+  // Legacy Netlify subdomain (keep until DNS fully cut over)
+  addAllowedOrigin(origins, "https://timely-klepon-1dc4f9.netlify.app");
   // Optional legacy Cloudflare host if still referenced.
   addAllowedOrigin(
     origins,
