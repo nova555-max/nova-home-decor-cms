@@ -6,7 +6,7 @@ import { Loader2, Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { deleteProject, saveProject } from "@/lib/actions/cms";
-import { formatDate, slugify } from "@/lib/format";
+import { createEntitySlug, formatDate } from "@/lib/format";
 import { emptyLocalized } from "@/lib/i18n";
 import type { Project } from "@/types/database";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
@@ -117,7 +117,10 @@ export function ProjectsManager({ projects }: ProjectsManagerProps) {
     formData.append(
       "slug",
       form.slug ||
-        slugify(form.title_i18n.ku || form.title_i18n.en || form.title_i18n.ar),
+        createEntitySlug(
+          form.title_i18n.ku || form.title_i18n.en || form.title_i18n.ar,
+          "project",
+        ),
     );
     formData.append("client_name", form.client_name);
     formData.append("location", form.location);

@@ -32,10 +32,12 @@ import {
   registerLocalMediaAsset,
   saveLocalUpload,
 } from "@/lib/dev/local-uploads";
-import { createEntitySlug, slugify } from "@/lib/format";
+import { createEntitySlug } from "@/lib/format";
 import {
   ensureUniqueSlugFromList,
+  isSlugUniqueViolation,
   resolveUniqueProductSlug,
+  resolveUniqueSlug,
 } from "@/lib/products/unique-slug";
 import { normalizePhone, serializePhoneList } from "@/lib/phone/e164";
 import { createCmsClient } from "@/lib/supabase/cms-client";
@@ -394,15 +396,13 @@ export async function saveCategory(
   if (!name?.trim()) {
     return { success: false, error: "Category name is required." };
   }
-  const slug = createEntitySlug(
-    (formData.get("slug") as string) || name,
-    "category",
-  );
 
-  const payload = {
+  const requestedSlug =
+    (formData.get("slug") as string)?.trim() || name;
+
+  const basePayload = {
     name,
     name_i18n: nameI18n,
-    slug,
     description: descI18n.ku || descI18n.en || descI18n.ar || null,
     description_i18n: descI18n,
     image_url: (formData.get("image_url") as string) || null,
@@ -413,9 +413,11 @@ export async function saveCategory(
   };
 
   if (isLocalCategoriesStore()) {
+    const slug = createEntitySlug(requestedSlug, "category");
     const saved = await upsertLocalCategory({
       id,
-      ...payload,
+      ...basePayload,
+      slug,
     });
     revalidateTag(CACHE_TAGS.categories);
     revalidateTag(CACHE_TAGS.dashboard);
@@ -423,8 +425,12 @@ export async function saveCategory(
   }
 
   const supabase = await createCmsClient();
+  const slug = await resolveUniqueSlug(supabase, requestedSlug, "category", {
+    excludeId: id,
+  });
+  const payload = { ...basePayload, slug };
 
-  const { data, error } = id
+  let { data, error } = id
     ? await supabase
         .from("categories")
         .update(payload)
@@ -432,6 +438,29 @@ export async function saveCategory(
         .select("*")
         .single()
     : await supabase.from("categories").insert(payload).select("*").single();
+
+  if (error && isSlugUniqueViolation(error.message)) {
+    const retrySlug = await resolveUniqueSlug(
+      supabase,
+      `${slug}-${Date.now().toString(36)}`,
+      "category",
+      { excludeId: id },
+    );
+    const retry = id
+      ? await supabase
+          .from("categories")
+          .update({ ...payload, slug: retrySlug })
+          .eq("id", id)
+          .select("*")
+          .single()
+      : await supabase
+          .from("categories")
+          .insert({ ...payload, slug: retrySlug })
+          .select("*")
+          .single();
+    data = retry.data;
+    error = retry.error;
+  }
 
   if (error) {
     return { success: false, error: actionErrorMessage(error.message) };
@@ -635,14 +664,14 @@ export async function saveProduct(
     : await supabase.from("products").insert(payload).select("*").single();
 
   // Race-safe retry once if unique slug still collided
-  if (
-    error &&
-    (error.message.includes("products_slug_key") ||
-      error.message.toLowerCase().includes("duplicate key"))
-  ) {
-    const retrySlug = await resolveUniqueProductSlug(supabase, `${slug}-x`, {
-      excludeId: id,
-    });
+  if (error && isSlugUniqueViolation(error.message)) {
+    const retrySlug = await resolveUniqueProductSlug(
+      supabase,
+      `${slug}-${Date.now().toString(36)}`,
+      {
+        excludeId: id,
+      },
+    );
     const retryPayload = { ...payload, slug: retrySlug };
     if (process.env.NODE_ENV === "development") {
       console.warn("[products:save] slug-collision-retry", {
@@ -772,6 +801,24 @@ export async function duplicateProduct(
     .select("id")
     .single();
 
+  if (error && isSlugUniqueViolation(error.message)) {
+    const retrySlug = await resolveUniqueProductSlug(
+      supabase,
+      `${copySlug}-${Date.now().toString(36)}`,
+    );
+    const retry = await supabase
+      .from("products")
+      .insert({ ...copy, slug: retrySlug })
+      .select("id")
+      .single();
+    if (retry.error) {
+      return { success: false, error: actionErrorMessage(retry.error.message) };
+    }
+    revalidateTag(CACHE_TAGS.products);
+    revalidateTag(CACHE_TAGS.dashboard);
+    return { success: true, data: retry.data.id };
+  }
+
   if (error) return { success: false, error: actionErrorMessage(error.message) };
 
   revalidateTag(CACHE_TAGS.products);
@@ -837,12 +884,13 @@ export async function saveProject(
   if (!title?.trim()) {
     return { success: false, error: "Project title is required." };
   }
-  const slug = slugify((formData.get("slug") as string) || title);
 
-  const payload = {
+  const requestedSlug =
+    (formData.get("slug") as string)?.trim() || title;
+
+  const basePayload = {
     title,
     title_i18n: titleI18n,
-    slug,
     description: descI18n.ku || descI18n.en || descI18n.ar || null,
     description_i18n: descI18n,
     client_name: (formData.get("client_name") as string) || null,
@@ -856,15 +904,24 @@ export async function saveProject(
   };
 
   if (isLocalDevCms()) {
-    const saved = await upsertLocalProject({ id: id ?? undefined, ...payload });
+    const slug = createEntitySlug(requestedSlug, "project");
+    const saved = await upsertLocalProject({
+      id: id ?? undefined,
+      ...basePayload,
+      slug,
+    });
     revalidateTag(CACHE_TAGS.projects);
     revalidateTag(CACHE_TAGS.dashboard);
     return { success: true, data: saved };
   }
 
   const supabase = await createCmsClient();
+  const slug = await resolveUniqueSlug(supabase, requestedSlug, "project", {
+    excludeId: id,
+  });
+  const payload = { ...basePayload, slug };
 
-  const { data, error } = id
+  let { data, error } = id
     ? await supabase
         .from("projects")
         .update(payload)
@@ -872,6 +929,29 @@ export async function saveProject(
         .select("*")
         .single()
     : await supabase.from("projects").insert(payload).select("*").single();
+
+  if (error && isSlugUniqueViolation(error.message)) {
+    const retrySlug = await resolveUniqueSlug(
+      supabase,
+      `${slug}-${Date.now().toString(36)}`,
+      "project",
+      { excludeId: id },
+    );
+    const retry = id
+      ? await supabase
+          .from("projects")
+          .update({ ...payload, slug: retrySlug })
+          .eq("id", id)
+          .select("*")
+          .single()
+      : await supabase
+          .from("projects")
+          .insert({ ...payload, slug: retrySlug })
+          .select("*")
+          .single();
+    data = retry.data;
+    error = retry.error;
+  }
 
   if (error) {
     return { success: false, error: actionErrorMessage(error.message) };

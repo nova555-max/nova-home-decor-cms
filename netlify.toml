@@ -11,10 +11,11 @@
 [build.environment]
   NODE_VERSION = "20"
   NEXT_TELEMETRY_DISABLED = "1"
-  # Public defaults (override NEXT_PUBLIC_APP_URL in Netlify UI to your real site URL)
+  # Public defaults (override NEXT_PUBLIC_APP_URL in Netlify UI if domain changes)
   NEXT_PUBLIC_SUPABASE_URL = "https://zfsoeketfjnnpirglosq.supabase.co"
   NEXT_PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpmc29la2V0ZmpubnBpcmdsb3NxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NjI1NjAsImV4cCI6MjA5OTUzODU2MH0.1bpzOD3aOGz88h-C_pPtUopWPcMYW3b2OxR2t-ioc40"
   NEXT_PUBLIC_DEFAULT_LOCALE = "ku"
+  NEXT_PUBLIC_APP_URL = "https://timely-klepon-1dc4f9.netlify.app"
   SUPER_ADMIN_EMAIL = "novahome756@gmail.com"
   RESEND_FROM_EMAIL = "Nova Home Decor <onboarding@resend.dev>"
 
@@ -24,10 +25,28 @@
 #   GEMINI_API_KEY
 #   OTP_PEPPER
 #   HEALTH_CHECK_SECRET
-#   NEXT_PUBLIC_APP_URL=https://YOUR-SITE.netlify.app
 #   NEXT_PUBLIC_GOOGLE_MAPS_API_KEY (optional)
 # Scopes: Builds + Functions (Production + Deploy Previews)
 # Do NOT set DEV_AUTH_ENABLED in production.
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    X-XSS-Protection = "1; mode=block"
+
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/icons/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
