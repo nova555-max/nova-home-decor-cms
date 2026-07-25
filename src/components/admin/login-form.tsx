@@ -53,16 +53,38 @@ export function LoginForm({
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     startTransition(async () => {
-      const result = await signInAsAdmin(email, password);
-      if (result.success) {
-        recordLoginEvent(email.trim().toLowerCase());
-        toast.success(t("common.welcome_back"));
-        window.location.assign("/admin");
-        return;
+      try {
+        const result = await Promise.race([
+          signInAsAdmin(email, password),
+          new Promise<{ success: false; error: string }>((resolve) => {
+            window.setTimeout(
+              () =>
+                resolve({
+                  success: false,
+                  error:
+                    "Sign-in timed out. Check your connection and try again.",
+                }),
+              20_000,
+            );
+          }),
+        ]);
+        if (result.success) {
+          recordLoginEvent(email.trim().toLowerCase());
+          toast.success(t("common.welcome_back"));
+          window.location.assign("/admin");
+          return;
+        }
+        toast.error(result.error, {
+          classNames: { toast: "dir-ltr text-left" },
+        });
+      } catch (err) {
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : "Sign-in failed. Please try again.",
+          { classNames: { toast: "dir-ltr text-left" } },
+        );
       }
-      toast.error(result.error, {
-        classNames: { toast: "dir-ltr text-left" },
-      });
     });
   };
 

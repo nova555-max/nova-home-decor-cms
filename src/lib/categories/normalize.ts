@@ -12,6 +12,7 @@ export function serializeCategories(items: Category[]): Category[] {
     image_url: item.image_url ?? null,
     icon: item.icon ?? null,
     color: item.color ?? null,
+    parent_id: item.parent_id ? String(item.parent_id) : null,
     sort_order: Number.isFinite(item.sort_order) ? item.sort_order : 0,
     is_active: item.is_active !== false,
     seo_title: item.seo_title ?? null,

@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
+import { withTimeout } from "@/lib/async/with-timeout";
 import { hasDevSessionFromRequest } from "@/lib/auth/dev-session";
 import {
   getResolvedSupabasePublicEnv,
@@ -20,16 +21,13 @@ function logSessionRefreshIssue(message: string): void {
   console.warn("[middleware:session]", message);
 }
 
-async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error("Supabase session timeout")), ms);
-  });
-  try {
-    return await Promise.race([promise, timeout]);
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
+function hasSupabaseAuthCookie(request: NextRequest): boolean {
+  return request.cookies
+    .getAll()
+    .some(
+      (cookie) =>
+        cookie.name.startsWith("sb-") && cookie.name.includes("auth-token"),
+    );
 }
 
 /**
@@ -50,6 +48,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   let userId: string | null = null;
+  let sessionRefreshTimedOut = false;
 
   try {
     const resolved = getResolvedSupabasePublicEnv();
@@ -90,11 +89,16 @@ export async function updateSession(request: NextRequest) {
     // getUser() validates JWT with Auth server and refreshes cookies when needed.
     const {
       data: { user },
-    } = await withTimeout(supabase.auth.getUser(), SESSION_TIMEOUT_MS);
+    } = await withTimeout(
+      supabase.auth.getUser(),
+      SESSION_TIMEOUT_MS,
+      "Supabase session timeout",
+    );
     userId = user?.id ?? null;
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Supabase session refresh failed";
+    sessionRefreshTimedOut = /timeout/i.test(message);
     logSessionRefreshIssue(message);
   }
 
@@ -108,6 +112,11 @@ export async function updateSession(request: NextRequest) {
   if (isProtectedAdmin && !userId) {
     // Dev-auth cookie is checked here; production always needs a session.
     if (!hasDevSessionFromRequest(request)) {
+      // Soft-fail: if Auth was slow but cookies exist, let the RSC resolve
+      // the session instead of bouncing /admin ↔ /login forever.
+      if (sessionRefreshTimedOut && hasSupabaseAuthCookie(request)) {
+        return supabaseResponse;
+      }
       const loginUrl = request.nextUrl.clone();
       loginUrl.pathname = "/login";
       loginUrl.searchParams.set("next", pathname);

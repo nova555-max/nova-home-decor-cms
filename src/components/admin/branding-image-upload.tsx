@@ -12,6 +12,7 @@ import {
 import { uploadBrandingWithRetry } from "@/lib/upload/client-upload";
 import { isInvalidPersistedMediaUrl } from "@/lib/media/storage-url";
 import { isImageFile, prepareImageForUpload } from "@/lib/image-utils";
+import { refreshPreservingScroll } from "@/lib/navigation/refresh-preserving-scroll";
 import type { WebsiteSettings } from "@/types/database";
 import { useAdminT } from "@/hooks";
 import { SmartImage } from "@/components/ui/smart-image";
@@ -69,7 +70,7 @@ export function BrandingImageUpload({
         if (result.success && result.data) {
           onSettingsUpdated?.(result.data.settings);
           toast.success(t("common.saved"));
-          router.refresh();
+          refreshPreservingScroll(router);
         } else if (!result.success) {
           toast.error(result.error);
         }
@@ -91,7 +92,7 @@ export function BrandingImageUpload({
       if (result.success && result.data) {
         onSettingsUpdated?.(result.data);
         toast.success(t("common.saved"));
-        router.refresh();
+        refreshPreservingScroll(router);
       } else if (!result.success) {
         toast.error(result.error);
       }

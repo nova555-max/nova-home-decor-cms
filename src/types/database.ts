@@ -186,6 +186,8 @@ export type Category = {
   image_url: string | null;
   icon: string | null;
   color: string | null;
+  /** Null = top-level category. Set to another category id for a subcategory. */
+  parent_id: string | null;
   sort_order: number;
   is_active: boolean;
   seo_title: string | null;

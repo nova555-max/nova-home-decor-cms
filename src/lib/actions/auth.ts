@@ -1,5 +1,6 @@
 "use server";
 
+import { withTimeout } from "@/lib/async/with-timeout";
 import { env } from "@/config/env";
 import {
   clearDevSession,
@@ -149,10 +150,14 @@ export async function signInAsAdmin(
 
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
-      password,
-    });
+    const { data, error } = await withTimeout(
+      supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      }),
+      15_000,
+      "Sign-in timed out. Check your connection and try again.",
+    );
 
     if (error) {
       console.error("[signInAsAdmin] auth", error.message);

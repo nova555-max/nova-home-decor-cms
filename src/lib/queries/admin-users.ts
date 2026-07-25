@@ -1,5 +1,6 @@
 import { env } from "@/config/env";
 import { hasDevSession } from "@/lib/auth/dev-session";
+import { withTimeout } from "@/lib/async/with-timeout";
 import {
   ALL_ADMIN_PERMISSIONS,
   normalizePermissions,
@@ -221,16 +222,32 @@ export async function getAdminContext(): Promise<AdminContext | null> {
     return devAdminContext();
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await withTimeout(
+      supabase.auth.getUser(),
+      10_000,
+      "Supabase getUser timeout",
+    );
 
-  if (!user?.email) return null;
+    if (!user?.email) return null;
 
-  const profile = await getAdminUserByAuthId(user.id);
+    const profile = await withTimeout(
+      getAdminUserByAuthId(user.id),
+      10_000,
+      "Admin profile timeout",
+    );
 
-  if (!profile || !profile.is_active) return null;
+    if (!profile || !profile.is_active) return null;
 
-  return mapAdminUser(profile);
+    return mapAdminUser(profile);
+  } catch (err) {
+    console.warn(
+      "[getAdminContext]",
+      err instanceof Error ? err.message : err,
+    );
+    return null;
+  }
 }

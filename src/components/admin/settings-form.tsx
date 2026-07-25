@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { updateWebsiteSettings } from "@/lib/actions/cms";
 import { DEFAULT_SHOWROOM_THEME } from "@/lib/constants";
+import { refreshPreservingScroll } from "@/lib/navigation/refresh-preserving-scroll";
 import type { EmailAddress, ShowroomThemeColors, WebsiteSettings } from "@/types/database";
 import type { HeroSlide } from "@/types/hero-slides";
 import { BrandingImageUpload } from "@/components/admin/branding-image-upload";
@@ -168,7 +169,7 @@ export function SettingsForm({
             setForm(toFormState(result.data));
           }
           toast.success(t("common.saved"));
-          router.refresh();
+          refreshPreservingScroll(router);
         } else {
           toast.error(result.error);
           if (process.env.NODE_ENV === "development") {
@@ -180,7 +181,7 @@ export function SettingsForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <div className="space-y-6">
       <AdminPageHeader
         titleKey="pages.settings.title"
         subtitleKey="pages.settings.subtitle"
@@ -195,13 +196,24 @@ export function SettingsForm({
         </div>
       )}
 
+      {/* Outside the settings <form> so Enter/buttons never submit company fields. */}
+      <Card className="border-border/40 rounded-2xl shadow-sm">
+        <CardHeader>
+          <CardTitle>{t("hero_slider.manager_title")}</CardTitle>
+          <CardDescription>{t("hero_slider.manager_desc")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <HeroSliderManager initial={heroSlides} embedded />
+        </CardContent>
+      </Card>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
       <Card className="border-border/40 rounded-2xl shadow-sm">
         <CardHeader>
           <CardTitle>{t("settings.identity")}</CardTitle>
           <CardDescription>{t("settings.identity_desc")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <HeroSliderManager initial={heroSlides} embedded />
           <div className="grid gap-4 md:grid-cols-2">
             <BrandingImageUpload
               field="favicon_url"
@@ -585,6 +597,7 @@ export function SettingsForm({
         {isBusy ? <Loader2 className="size-4 animate-spin" /> : null}
         {isBusy ? t("common.saving") : t("settings.save")}
       </Button>
-    </form>
+      </form>
+    </div>
   );
 }

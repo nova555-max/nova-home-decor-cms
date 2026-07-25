@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -11,6 +11,7 @@ import {
   reorderProducts,
   saveProduct,
 } from "@/lib/actions/cms";
+import { flattenCategoryTree } from "@/lib/categories/tree";
 import { createEntitySlug } from "@/lib/format";
 import { emptyLocalized } from "@/lib/i18n";
 import {
@@ -95,6 +96,11 @@ export function ProductsManager({
   const isBusy = isPending || isLocked || isUploading;
 
   useUnsavedWarning(isDirty && open);
+
+  const categoryTree = useMemo(
+    () => flattenCategoryTree(categories),
+    [categories],
+  );
 
   const openCreate = () => {
     setEditingId(null);
@@ -354,8 +360,9 @@ export function ProductsManager({
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {categories.map((category) => (
+                    {categoryTree.map((category) => (
                       <SelectItem key={category.id} value={category.id}>
+                        {category.depth > 0 ? "↳ " : ""}
                         {categoryName(category, locale)}
                       </SelectItem>
                     ))}

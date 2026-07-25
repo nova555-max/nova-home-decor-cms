@@ -3,7 +3,11 @@ import { redirect } from "next/navigation";
 import { LOGIN_PATH } from "@/lib/auth/config";
 import type { AdminModule } from "@/types/admin";
 import { hasDevSession } from "@/lib/auth/dev-session";
-import { canManageEditors, hasPermission } from "@/lib/auth/permissions";
+import {
+  canManageEditors,
+  firstAllowedAdminPath,
+  hasPermission,
+} from "@/lib/auth/permissions";
 import { getAdminContext } from "@/lib/queries/admin-users";
 import { createClient } from "@/lib/supabase/server";
 
@@ -33,7 +37,7 @@ export async function requireAdmin() {
 export async function requireSuperAdmin() {
   const ctx = await requireAdmin();
   if (!canManageEditors(ctx)) {
-    redirect("/admin");
+    redirect(firstAllowedAdminPath(ctx));
   }
   return ctx;
 }
@@ -41,7 +45,7 @@ export async function requireSuperAdmin() {
 export async function requirePermission(module: AdminModule) {
   const ctx = await requireAdmin();
   if (!hasPermission(ctx, module)) {
-    redirect("/admin");
+    redirect(firstAllowedAdminPath(ctx));
   }
   return ctx;
 }

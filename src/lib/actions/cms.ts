@@ -5,9 +5,11 @@ import { revalidateTag } from "next/cache";
 import { CACHE_TAGS, STORAGE_BUCKET } from "@/lib/constants";
 import {
   isLocalCategoriesStore,
+  listMergedCategories,
   softDeleteLocalCategory,
   upsertLocalCategory,
 } from "@/lib/dev/local-categories";
+import { wouldCreateCategoryCycle } from "@/lib/categories/tree";
 import {
   reorderLocalGallery,
   reorderLocalProducts,
@@ -408,16 +410,42 @@ export async function saveCategory(
     image_url: (formData.get("image_url") as string) || null,
     icon: (formData.get("icon") as string) || null,
     color: (formData.get("color") as string) || null,
+    parent_id: (() => {
+      const raw = (formData.get("parent_id") as string | null)?.trim();
+      return raw ? raw : null;
+    })(),
     sort_order: Number(formData.get("sort_order") || 0),
     is_active: formData.get("is_active") === "true",
   };
 
   if (isLocalCategoriesStore()) {
     const slug = createEntitySlug(requestedSlug, "category");
+    const existingLocal = id
+      ? (await listMergedCategories(false)).find((c) => c.id === id)
+      : null;
+    const allCats = await listMergedCategories(false);
+    if (
+      basePayload.parent_id &&
+      wouldCreateCategoryCycle(allCats, id, basePayload.parent_id)
+    ) {
+      return { success: false, error: "Cannot nest a category under itself." };
+    }
+    if (basePayload.parent_id) {
+      const parent = allCats.find((c) => c.id === basePayload.parent_id);
+      if (!parent) {
+        return { success: false, error: "Parent category not found." };
+      }
+      if (parent.parent_id) {
+        return {
+          success: false,
+          error: "Subcategories can only be nested one level deep.",
+        };
+      }
+    }
     const saved = await upsertLocalCategory({
       id,
       ...basePayload,
-      slug,
+      slug: existingLocal?.slug || slug,
     });
     revalidateTag(CACHE_TAGS.categories);
     revalidateTag(CACHE_TAGS.dashboard);
@@ -425,6 +453,37 @@ export async function saveCategory(
   }
 
   const supabase = await createCmsClient();
+
+  if (basePayload.parent_id) {
+    if (id && basePayload.parent_id === id) {
+      return { success: false, error: "Cannot nest a category under itself." };
+    }
+    const { data: allRows } = await supabase
+      .from("categories")
+      .select("id, parent_id")
+      .is("deleted_at", null);
+    const allCats = (allRows ?? []) as Pick<Category, "id" | "parent_id">[];
+    if (
+      wouldCreateCategoryCycle(
+        allCats as Category[],
+        id,
+        basePayload.parent_id,
+      )
+    ) {
+      return { success: false, error: "Cannot nest a category under itself." };
+    }
+    const parent = allCats.find((c) => c.id === basePayload.parent_id);
+    if (!parent) {
+      return { success: false, error: "Parent category not found." };
+    }
+    if (parent.parent_id) {
+      return {
+        success: false,
+        error: "Subcategories can only be nested one level deep.",
+      };
+    }
+  }
+
   const slug = await resolveUniqueSlug(supabase, requestedSlug, "category", {
     excludeId: id,
   });

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { isDevAuthEnabled } from "@/lib/auth/dev-session";
+import { withTimeout } from "@/lib/async/with-timeout";
 import { LoginForm } from "@/components/admin/login-form";
 import { LoginThemeToggle } from "@/components/admin/login-theme-toggle";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,9 +10,17 @@ import { env } from "@/config/env";
 import { getAdminContext } from "@/lib/supabase/auth";
 
 export default async function LoginPage() {
-  const ctx = await getAdminContext();
-  if (ctx) {
-    redirect("/admin");
+  try {
+    const ctx = await withTimeout(
+      getAdminContext(),
+      8_000,
+      "Admin context timeout",
+    );
+    if (ctx) {
+      redirect("/admin");
+    }
+  } catch {
+    // Auth slow/unavailable — show the form instead of hanging or looping.
   }
 
   const devLogin = isDevAuthEnabled();

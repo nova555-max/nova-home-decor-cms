@@ -20,6 +20,7 @@ import { LocaleTabs, LocalizedInput } from "@/components/admin/locale-fields";
 import { MultiImageUpload } from "@/components/admin/multi-image-upload";
 import { useAdminT, useDirection } from "@/hooks";
 import { useSubmitLock } from "@/hooks/use-submit-lock";
+import { refreshPreservingScroll } from "@/lib/navigation/refresh-preserving-scroll";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
 import {
@@ -159,7 +160,7 @@ export function HomepageEditor({
         });
         if (result.success) {
           toast.success(t("common.saved"));
-          router.refresh();
+          refreshPreservingScroll(router);
         } else {
           toast.error(result.error);
         }
@@ -372,6 +373,7 @@ export function HomepageEditor({
       />
 
       <Button
+        type="button"
         size="lg"
         disabled={isBusy}
         onClick={saveHomepage}

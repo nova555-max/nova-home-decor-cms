@@ -111,3 +111,11 @@ export function filterNavForContext(
     return navModule ? hasPermission(ctx, navModule) : true;
   });
 }
+
+/** First admin route the user can open — never loops back onto a denied path. */
+export function firstAllowedAdminPath(
+  ctx: Pick<AdminContext, "role" | "permissions">,
+): string {
+  const nav = filterNavForContext(ctx);
+  return nav[0]?.href ?? "/admin/profile";
+}

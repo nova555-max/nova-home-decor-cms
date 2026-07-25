@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { AnimatePresence, motion } from "@/lib/motion";
 
 import type { Locale } from "@/config/site";
+import { getCategorySubtreeIds } from "@/lib/categories/tree";
 import { formatPrice } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import { productName, type Category, type Product } from "@/types/database";
@@ -30,11 +31,14 @@ export function CategoriesSection({
   onCategoryChange,
 }: CategoriesSectionProps) {
   const filteredProducts = useMemo(() => {
-    const list = activeCategoryId
-      ? products.filter((product) => product.category_id === activeCategoryId)
-      : products;
-    return sortProducts(list);
-  }, [products, activeCategoryId]);
+    if (!activeCategoryId) return sortProducts(products);
+    const ids = getCategorySubtreeIds(categories, activeCategoryId);
+    return sortProducts(
+      products.filter(
+        (product) => product.category_id && ids.has(product.category_id),
+      ),
+    );
+  }, [products, activeCategoryId, categories]);
 
   return (
     <section id="products" className="mx-auto w-full max-w-7xl px-4 pb-16 md:px-6 md:pb-20">

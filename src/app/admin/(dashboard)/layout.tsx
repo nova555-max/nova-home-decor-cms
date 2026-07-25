@@ -1,10 +1,13 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 
-import { canAccessPath } from "@/lib/auth/permissions";
+import {
+  canAccessPath,
+  firstAllowedAdminPath,
+} from "@/lib/auth/permissions";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { getAdminAccountProfile } from "@/lib/actions/account";
-import { getCachedAdminSettings, getCachedGlobalSearchItems } from "@/lib/queries/cms";
+import { getCachedAdminSettings } from "@/lib/queries/cms";
 import { requireAdmin } from "@/lib/supabase/auth";
 
 export default async function AdminDashboardLayout({
@@ -16,12 +19,16 @@ export default async function AdminDashboardLayout({
   const pathname = (await headers()).get("x-pathname");
 
   if (pathname && !canAccessPath(ctx, pathname)) {
-    redirect("/admin");
+    const fallback = firstAllowedAdminPath(ctx);
+    if (fallback !== pathname) {
+      redirect(fallback);
+    }
   }
 
-  const [settings, searchItems, profile] = await Promise.all([
+  // Avoid loading full product/category/project catalogs on every admin
+  // navigation — that made the panel feel frozen after login.
+  const [settings, profile] = await Promise.all([
     getCachedAdminSettings(),
-    getCachedGlobalSearchItems(),
     getAdminAccountProfile(),
   ]);
 
@@ -29,7 +36,7 @@ export default async function AdminDashboardLayout({
     <AdminShell
       settings={settings}
       adminContext={ctx}
-      searchItems={searchItems}
+      searchItems={[]}
       preferredTheme={profile?.preferredTheme ?? null}
     >
       {children}

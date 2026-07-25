@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 
 import type { Locale } from "@/config/site";
+import { getCategorySubtreeIds } from "@/lib/categories/tree";
 import { t } from "@/lib/i18n";
 import { getSectionHeading } from "@/lib/showroom/content";
 import type { Category, HomepageContent, Product } from "@/types/database";
@@ -37,11 +38,12 @@ export function ProductsShowcaseSection({
   );
 
   const filteredProducts = useMemo(() => {
-    const list = activeCategoryId
-      ? products.filter((p) => p.category_id === activeCategoryId)
-      : products;
-    return sortProducts(list);
-  }, [products, activeCategoryId]);
+    if (!activeCategoryId) return sortProducts(products);
+    const ids = getCategorySubtreeIds(categories, activeCategoryId);
+    return sortProducts(
+      products.filter((p) => p.category_id && ids.has(p.category_id)),
+    );
+  }, [products, activeCategoryId, categories]);
 
   const displayProducts =
     activeCategoryId != null

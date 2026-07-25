@@ -1,20 +1,24 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { deleteCategory, saveCategory } from "@/lib/actions/cms";
 import { reorderCategories } from "@/lib/actions/homepage";
+import {
+  flattenCategoryTree,
+  wouldCreateCategoryCycle,
+} from "@/lib/categories/tree";
 import { createEntitySlug } from "@/lib/format";
 import { emptyLocalized, type LocalizedText } from "@/lib/i18n";
-import type { Category } from "@/types/database";
+import { categoryName, type Category } from "@/types/database";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { CategorySortableList } from "@/components/admin/category-sortable-list";
 import { ImageUpload } from "@/components/admin/image-upload";
 import { LocalizedInput } from "@/components/admin/locale-fields";
-import { useAdminT } from "@/hooks";
+import { useAdminT, useDirection } from "@/hooks";
 import { useSubmitLock } from "@/hooks/use-submit-lock";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,10 +28,19 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type CategoriesManagerProps = {
   categories: Category[];
 };
+
+const NO_PARENT = "__none__";
 
 function primaryName(value: LocalizedText) {
   return (value.ku || value.en || value.ar || "").trim();
@@ -35,6 +48,7 @@ function primaryName(value: LocalizedText) {
 
 export function CategoriesManager({ categories }: CategoriesManagerProps) {
   const t = useAdminT();
+  const { locale } = useDirection();
   const router = useRouter();
   const { runLocked, isLocked } = useSubmitLock({
     duplicateMessage: t("common.please_wait"),
@@ -43,17 +57,26 @@ export function CategoriesManager({ categories }: CategoriesManagerProps) {
     Array.isArray(categories) ? categories : [],
   );
   const [nameI18n, setNameI18n] = useState(emptyLocalized);
+  const [parentId, setParentId] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [editNameI18n, setEditNameI18n] = useState(emptyLocalized);
   const [editDescriptionI18n, setEditDescriptionI18n] = useState(emptyLocalized);
   const [editImageUrl, setEditImageUrl] = useState("");
+  const [editParentId, setEditParentId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const isBusy = isPending || isLocked;
 
+  const tree = useMemo(() => flattenCategoryTree(list), [list]);
+  const rootParents = useMemo(
+    () => list.filter((c) => !c.parent_id).sort((a, b) => a.sort_order - b.sort_order),
+    [list],
+  );
+
   const submitCategory = (
     name_i18n: LocalizedText,
     description_i18n: LocalizedText,
+    nextParentId: string | null,
     id?: string | null,
     existing?: Category,
     imageUrl?: string | null,
@@ -62,6 +85,19 @@ export function CategoriesManager({ categories }: CategoriesManagerProps) {
     if (!displayName) {
       toast.error(t("categories.name_required"));
       return;
+    }
+
+    if (wouldCreateCategoryCycle(list, id, nextParentId)) {
+      toast.error(t("categories.parent_invalid"));
+      return;
+    }
+
+    if (nextParentId) {
+      const parent = list.find((c) => c.id === nextParentId);
+      if (parent?.parent_id) {
+        toast.error(t("categories.parent_depth"));
+        return;
+      }
     }
 
     const formData = new FormData();
@@ -78,6 +114,7 @@ export function CategoriesManager({ categories }: CategoriesManagerProps) {
     );
     formData.append("is_active", String(existing?.is_active ?? true));
     if (imageUrl) formData.append("image_url", imageUrl);
+    if (nextParentId) formData.append("parent_id", nextParentId);
 
     startTransition(async () => {
       await runLocked(async () => {
@@ -93,7 +130,10 @@ export function CategoriesManager({ categories }: CategoriesManagerProps) {
             return [...prev, result.data!];
           });
           toast.success(t("common.saved"));
-          if (!id) setNameI18n(emptyLocalized());
+          if (!id) {
+            setNameI18n(emptyLocalized());
+            setParentId(null);
+          }
           setEditOpen(false);
           setEditingId(null);
           router.refresh();
@@ -117,6 +157,7 @@ export function CategoriesManager({ categories }: CategoriesManagerProps) {
       en: category.description_i18n?.en ?? "",
     });
     setEditImageUrl(category.image_url ?? "");
+    setEditParentId(category.parent_id);
     setEditOpen(true);
   };
 
@@ -146,12 +187,20 @@ export function CategoriesManager({ categories }: CategoriesManagerProps) {
       await runLocked(async () => {
         const result = await deleteCategory(id);
         if (result.success) {
-          setList((prev) => prev.filter((item) => item.id !== id));
+          setList((prev) =>
+            prev
+              .filter((item) => item.id !== id)
+              .map((item) =>
+                item.parent_id === id ? { ...item, parent_id: null } : item,
+              ),
+          );
           toast.success(t("common.deleted"));
         } else toast.error(result.error);
       });
     });
   };
+
+  const parentOptionsForEdit = rootParents.filter((c) => c.id !== editingId);
 
   return (
     <div className="space-y-6">
@@ -164,7 +213,7 @@ export function CategoriesManager({ categories }: CategoriesManagerProps) {
         className="border-border/40 bg-card/50 space-y-3 rounded-2xl border p-4 md:p-5"
         onSubmit={(event) => {
           event.preventDefault();
-          submitCategory(nameI18n, emptyLocalized());
+          submitCategory(nameI18n, emptyLocalized(), parentId);
         }}
       >
         <Label>{t("categories.add")}</Label>
@@ -173,6 +222,32 @@ export function CategoriesManager({ categories }: CategoriesManagerProps) {
           value={nameI18n}
           onChange={setNameI18n}
         />
+        <div className="space-y-2">
+          <Label>{t("categories.parent")}</Label>
+          <Select
+            value={parentId ?? NO_PARENT}
+            onValueChange={(value) =>
+              setParentId(!value || value === NO_PARENT ? null : value)
+            }
+          >
+            <SelectTrigger className="rounded-xl">
+              <SelectValue placeholder={t("categories.parent_none")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NO_PARENT}>
+                {t("categories.parent_none")}
+              </SelectItem>
+              {rootParents.map((category) => (
+                <SelectItem key={category.id} value={category.id}>
+                  {categoryName(category, locale)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-muted-foreground text-xs">
+            {t("categories.parent_hint")}
+          </p>
+        </div>
         <p className="text-muted-foreground text-xs">
           {t("categories.name_hint")}
         </p>
@@ -188,7 +263,7 @@ export function CategoriesManager({ categories }: CategoriesManagerProps) {
 
       <div className="border-border/40 overflow-hidden rounded-2xl border shadow-sm" data-admin-table>
         <CategorySortableList
-          categories={list}
+          categories={tree}
           onReorder={handleReorder}
           onEdit={openEdit}
           onDelete={handleDelete}
@@ -208,6 +283,7 @@ export function CategoriesManager({ categories }: CategoriesManagerProps) {
               submitCategory(
                 editNameI18n,
                 editDescriptionI18n,
+                editParentId,
                 editingId,
                 existing,
                 editImageUrl || null,
@@ -219,6 +295,29 @@ export function CategoriesManager({ categories }: CategoriesManagerProps) {
               value={editNameI18n}
               onChange={setEditNameI18n}
             />
+            <div className="space-y-2">
+              <Label>{t("categories.parent")}</Label>
+              <Select
+                value={editParentId ?? NO_PARENT}
+                onValueChange={(value) =>
+                  setEditParentId(!value || value === NO_PARENT ? null : value)
+                }
+              >
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue placeholder={t("categories.parent_none")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_PARENT}>
+                    {t("categories.parent_none")}
+                  </SelectItem>
+                  {parentOptionsForEdit.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {categoryName(category, locale)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <LocalizedInput
               label={t("common.description")}
               value={editDescriptionI18n}

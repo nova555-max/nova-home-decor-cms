@@ -37,7 +37,21 @@ export function DashboardView({ data, adminContext }: DashboardViewProps) {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!(event.ctrlKey || event.metaKey)) return;
+      // Alt+Shift+letter — never Ctrl/Cmd (those conflict with Save/Copy/Print).
+      if (!event.altKey || !event.shiftKey) return;
+      if (event.ctrlKey || event.metaKey) return;
+
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        target?.isContentEditable
+      ) {
+        return;
+      }
+
       const key = event.key.toLowerCase();
       const routes: Record<string, string> = {
         p: "/admin/products",

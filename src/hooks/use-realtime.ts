@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
+import { refreshPreservingScroll } from "@/lib/navigation/refresh-preserving-scroll";
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -26,7 +27,7 @@ export function useRealtimeSync(enabled = true) {
 
     const scheduleRefresh = () => {
       if (refreshTimer) clearTimeout(refreshTimer);
-      refreshTimer = setTimeout(() => router.refresh(), 1000);
+      refreshTimer = setTimeout(() => refreshPreservingScroll(router), 1000);
     };
 
     const tables = [

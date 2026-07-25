@@ -1,7 +1,9 @@
 "use client";
 
+import { useMemo } from "react";
 import { motion } from "@/lib/motion";
 import type { Locale } from "@/config/site";
+import { flattenCategoryTree } from "@/lib/categories/tree";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { categoryName, type Category } from "@/types/database";
@@ -25,6 +27,10 @@ export function CategoryFilter({
 }: CategoryFilterProps) {
   const allLabel = t(locale, "common", "all_categories");
   const isLuxury = variant === "luxury";
+  const ordered = useMemo(
+    () => flattenCategoryTree(categories),
+    [categories],
+  );
 
   return (
     <div className={cn("w-full", className)}>
@@ -35,10 +41,14 @@ export function CategoryFilter({
           onClick={() => onSelect(null)}
           luxury={isLuxury}
         />
-        {categories.map((category) => (
+        {ordered.map((category) => (
           <FilterPill
             key={category.id}
-            label={categoryName(category, locale)}
+            label={
+              category.depth > 0
+                ? `↳ ${categoryName(category, locale)}`
+                : categoryName(category, locale)
+            }
             isActive={activeId === category.id}
             onClick={() => onSelect(category.id)}
             luxury={isLuxury}

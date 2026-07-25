@@ -429,10 +429,10 @@ function ShortcutsPanel() {
   return (
     <DashboardSection title={td(locale, "shortcuts")}>
       <DashboardCard padding="md" className="space-y-2.5 text-sm">
-        <ShortcutRow label={td(locale, "shortcut_product")} keys="Ctrl + P" />
-        <ShortcutRow label={td(locale, "shortcut_category")} keys="Ctrl + C" />
-        <ShortcutRow label={td(locale, "shortcut_gallery")} keys="Ctrl + G" />
-        <ShortcutRow label={td(locale, "shortcut_settings")} keys="Ctrl + S" />
+        <ShortcutRow label={td(locale, "shortcut_product")} keys="Alt + Shift + P" />
+        <ShortcutRow label={td(locale, "shortcut_category")} keys="Alt + Shift + C" />
+        <ShortcutRow label={td(locale, "shortcut_gallery")} keys="Alt + Shift + G" />
+        <ShortcutRow label={td(locale, "shortcut_settings")} keys="Alt + Shift + S" />
       </DashboardCard>
     </DashboardSection>
   );

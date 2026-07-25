@@ -97,6 +97,7 @@ export type LocalCategoryInput = {
   image_url?: string | null;
   icon?: string | null;
   color?: string | null;
+  parent_id?: string | null;
   sort_order: number;
   is_active: boolean;
 };
@@ -120,6 +121,7 @@ export async function upsertLocalCategory(
         image_url: input.image_url ?? items[index].image_url,
         icon: input.icon ?? items[index].icon,
         color: input.color ?? items[index].color,
+        parent_id: input.parent_id ?? null,
         sort_order: input.sort_order,
         is_active: input.is_active,
         updated_at: now,
@@ -139,6 +141,7 @@ export async function upsertLocalCategory(
     image_url: input.image_url ?? null,
     icon: input.icon ?? null,
     color: input.color ?? null,
+    parent_id: input.parent_id ?? null,
     sort_order: input.sort_order,
     is_active: input.is_active,
     seo_title: null,

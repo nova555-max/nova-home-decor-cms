@@ -154,6 +154,12 @@ const ku = {
     name_placeholder: "وەک: دەگا، پەنجەرە، دیکۆراتی ماڵ",
     name_hint: "تەنها ناو بنووسە — Enter یان دوگمەی زیادکردن",
     empty: "هێشتا پۆل نییە — لە سەرەوە یەکێک زیاد بکە",
+    parent: "پۆلی باوک",
+    parent_none: "پۆلی سەرەکی (بەبێ باوک)",
+    parent_hint: "هەڵبژێرە بۆ دروستکردنی پۆل لەناو پۆلێکی تر",
+    parent_invalid: "ناتوانرێت پۆل لەژێر خۆی یان منداڵەکانیدا دابنرێت",
+    parent_depth: "تەنها یەک ئاستی ژێرپۆل ڕێگەپێدراوە",
+    subcategory: "ژێرپۆل",
   },
   products: {
     add: "زیادکردنی بەرهەم",
@@ -372,7 +378,7 @@ const ku = {
   settings: {
     save: "پاشەکەوتکردنی ڕێکخستنەکان",
     identity: "زانیاری کۆمپانیا",
-    identity_desc: "ناو و وەسفی کۆمپانیا. سلایدەری هیرۆ جێگەی لۆگۆی پاشبنەما دەگرێتەوە.",
+    identity_desc: "ناو و وەسفی کۆمپانیا و ئایکۆنی وێبسایت.",
     branding_invalid_url:
       "ئەم وێنەیە URL‑ی نادروستە. دووبارە upload بکە بۆ Supabase Storage.",
     branding_reupload_hint:
@@ -864,6 +870,12 @@ const ar = {
     name_placeholder: "مثل: باب، نافذة، ديكور",
     name_hint: "اكتب الاسم فقط — Enter أو زر الإضافة",
     empty: "لا توجد تصنيفات بعد — أضف واحداً من الأعلى",
+    parent: "التصنيف الأب",
+    parent_none: "تصنيف رئيسي (بدون أب)",
+    parent_hint: "اختر لإنشاء تصنيف داخل تصنيف آخر",
+    parent_invalid: "لا يمكن وضع التصنيف تحت نفسه أو فروعه",
+    parent_depth: "يُسمح بمستوى فرعي واحد فقط",
+    subcategory: "تصنيف فرعي",
   },
   products: {
     add: "إضافة منتج",
@@ -1080,7 +1092,7 @@ const ar = {
   settings: {
     save: "حفظ الإعدادات",
     identity: "معلومات الشركة",
-    identity_desc: "اسم الشركة ووصفها. سلايدر البطل يحل محل شعار الخلفية.",
+    identity_desc: "اسم الشركة ووصفها والأيقونة.",
     branding_invalid_url:
       "رابط الصورة غير صالح. أعد الرفع إلى Supabase Storage.",
     branding_reupload_hint:
@@ -1572,6 +1584,12 @@ const en = {
     name_placeholder: "e.g. Door, Window, Home decor",
     name_hint: "Type the name only — press Enter or Add",
     empty: "No categories yet — add one above",
+    parent: "Parent category",
+    parent_none: "Top-level (no parent)",
+    parent_hint: "Choose a parent to create a subcategory",
+    parent_invalid: "Cannot nest a category under itself or its children",
+    parent_depth: "Only one subcategory level is allowed",
+    subcategory: "Subcategory",
   },
   products: {
     add: "Add product",
@@ -1788,7 +1806,7 @@ const en = {
   settings: {
     save: "Save settings",
     identity: "Company Information",
-    identity_desc: "Business name and description. Hero Slider replaces the background logo.",
+    identity_desc: "Business name, description, and favicon.",
     branding_invalid_url:
       "This image URL is invalid. Upload again to Supabase Storage.",
     branding_reupload_hint:

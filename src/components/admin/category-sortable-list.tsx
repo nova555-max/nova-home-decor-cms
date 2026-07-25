@@ -18,8 +18,9 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Pencil, Trash2 } from "lucide-react";
+import { CornerDownLeft, GripVertical, Pencil, Trash2 } from "lucide-react";
 
+import type { CategoryTreeNode } from "@/lib/categories/tree";
 import { useAdminT, useDirection } from "@/hooks";
 import { categoryName, type Category } from "@/types/database";
 import { Badge } from "@/components/ui/badge";
@@ -32,9 +33,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
 type CategorySortableListProps = {
-  categories: Category[];
+  categories: CategoryTreeNode[];
   onReorder: (ids: string[]) => void;
   onEdit: (category: Category) => void;
   onDelete: (id: string) => void;
@@ -48,13 +50,12 @@ export const CategorySortableList = memo(function CategorySortableList({
 }: CategorySortableListProps) {
   const t = useAdminT();
   const [mounted, setMounted] = useState(false);
-  const sorted = [...categories].sort((a, b) => a.sort_order - b.sort_order);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!sorted.length) {
+  if (!categories.length) {
     return (
       <p className="text-muted-foreground py-12 text-center text-sm">
         {t("categories.empty")}
@@ -65,7 +66,7 @@ export const CategorySortableList = memo(function CategorySortableList({
   if (!mounted) {
     return (
       <StaticCategoryTable
-        categories={sorted}
+        categories={categories}
         onEdit={onEdit}
         onDelete={onDelete}
       />
@@ -74,7 +75,7 @@ export const CategorySortableList = memo(function CategorySortableList({
 
   return (
     <SortableCategoryTable
-      categories={sorted}
+      categories={categories}
       onReorder={onReorder}
       onEdit={onEdit}
       onDelete={onDelete}
@@ -87,7 +88,7 @@ function SortableCategoryTable({
   onReorder,
   onEdit,
   onDelete,
-}: CategorySortableListProps & { categories: Category[] }) {
+}: CategorySortableListProps) {
   const t = useAdminT();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -140,17 +141,39 @@ function SortableCategoryTable({
   );
 }
 
+function CategoryNameCell({ category }: { category: CategoryTreeNode }) {
+  const t = useAdminT();
+  const { locale } = useDirection();
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-2",
+        category.depth > 0 && "ps-6 text-sm",
+      )}
+    >
+      {category.depth > 0 ? (
+        <CornerDownLeft className="text-muted-foreground size-3.5 shrink-0" />
+      ) : null}
+      <span className="font-medium">{categoryName(category, locale)}</span>
+      {category.depth > 0 ? (
+        <Badge variant="secondary" className="text-[10px]">
+          {t("categories.subcategory")}
+        </Badge>
+      ) : null}
+    </div>
+  );
+}
+
 function SortableRow({
   category,
   onEdit,
   onDelete,
 }: {
-  category: Category;
+  category: CategoryTreeNode;
   onEdit: (category: Category) => void;
   onDelete: (id: string) => void;
 }) {
   const t = useAdminT();
-  const { locale } = useDirection();
   const {
     attributes,
     listeners,
@@ -180,7 +203,7 @@ function SortableRow({
         </button>
       </TableCell>
       <TableCell>
-        <span className="font-medium">{categoryName(category, locale)}</span>
+        <CategoryNameCell category={category} />
       </TableCell>
       <TableCell>
         <Badge variant={category.is_active ? "default" : "secondary"}>
@@ -190,6 +213,7 @@ function SortableRow({
       <TableCell className="text-end">
         <div className="flex justify-end gap-1">
           <Button
+            type="button"
             size="icon-sm"
             variant="ghost"
             onClick={() => onEdit(category)}
@@ -197,6 +221,7 @@ function SortableRow({
             <Pencil className="size-4" />
           </Button>
           <Button
+            type="button"
             size="icon-sm"
             variant="ghost"
             onClick={() => onDelete(category.id)}
@@ -214,12 +239,11 @@ function StaticCategoryTable({
   onEdit,
   onDelete,
 }: {
-  categories: Category[];
+  categories: CategoryTreeNode[];
   onEdit: (category: Category) => void;
   onDelete: (id: string) => void;
 }) {
   const t = useAdminT();
-  const { locale } = useDirection();
 
   return (
     <Table>
@@ -234,9 +258,7 @@ function StaticCategoryTable({
         {categories.map((category) => (
           <TableRow key={category.id}>
             <TableCell>
-              <span className="font-medium">
-                {categoryName(category, locale)}
-              </span>
+              <CategoryNameCell category={category} />
             </TableCell>
             <TableCell>
               <Badge variant={category.is_active ? "default" : "secondary"}>
@@ -246,6 +268,7 @@ function StaticCategoryTable({
             <TableCell className="text-end">
               <div className="flex justify-end gap-1">
                 <Button
+                  type="button"
                   size="icon-sm"
                   variant="ghost"
                   onClick={() => onEdit(category)}
@@ -253,6 +276,7 @@ function StaticCategoryTable({
                   <Pencil className="size-4" />
                 </Button>
                 <Button
+                  type="button"
                   size="icon-sm"
                   variant="ghost"
                   onClick={() => onDelete(category.id)}
