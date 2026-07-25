@@ -53,14 +53,18 @@ Domain is already pointed at this Netlify site:
    - `NEXT_PUBLIC_APP_URL` = `https://nova-home-decor.com`
 3. **Trigger Deploy** → Deploys → Trigger deploy → Clear cache and deploy site (so the new APP_URL is baked into the build).
 
-### DNS (if you ever re-point)
+### DNS (required for Chrome / admin at custom domain)
 
-At your domain registrar:
+Admin panel URL: **`https://nova-home-decor.com/admin`**
+
+At your domain registrar, apex (`@`) must have **only** Netlify’s load balancer:
 
 | Type | Name | Value |
 |------|------|--------|
-| **A** | `@` | `75.2.60.5` (Netlify also accepts their current A records) |
+| **A** | `@` | `75.2.60.5` |
 | **CNAME** | `www` | `timely-klepon-1dc4f9.netlify.app` |
+
+**Do not keep** a second A record `99.83.190.102` — Chrome then fails with `ERR_SSL_PROTOCOL_ERROR` on `/admin` (intermittent: sometimes works, sometimes broken).
 
 Or use Netlify DNS name servers if you prefer Netlify to manage DNS.
 

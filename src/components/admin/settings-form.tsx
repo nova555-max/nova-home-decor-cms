@@ -60,8 +60,7 @@ function toFormState(settings: WebsiteSettings | null) {
     facebook_url: settings?.facebook_url ?? "",
     instagram_url: settings?.instagram_url ?? "",
     tiktok_url: settings?.tiktok_url ?? "",
-    telegram_url: settings?.telegram_url ?? "",
-    youtube_url: settings?.youtube_url ?? "",
+    snapchat_url: settings?.snapchat_url ?? "",
     email_addresses: settings?.email_addresses ?? [],
     theme_colors: {
       ...DEFAULT_SHOWROOM_THEME,
@@ -156,8 +155,7 @@ export function SettingsForm({
     formData.append("facebook_url", form.facebook_url);
     formData.append("instagram_url", form.instagram_url);
     formData.append("tiktok_url", form.tiktok_url);
-    formData.append("telegram_url", form.telegram_url);
-    formData.append("youtube_url", form.youtube_url);
+    formData.append("snapchat_url", form.snapchat_url);
     formData.append("email_addresses", JSON.stringify(form.email_addresses));
     formData.append("theme_colors", JSON.stringify(form.theme_colors));
 
@@ -492,27 +490,15 @@ export function SettingsForm({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="telegram_url">{t("settings.telegram")}</Label>
+            <Label htmlFor="snapchat_url">{t("settings.snapchat")}</Label>
             <Input
-              id="telegram_url"
+              id="snapchat_url"
               type="url"
-              value={form.telegram_url}
+              value={form.snapchat_url}
               onChange={(e) =>
-                setForm((prev) => ({ ...prev, telegram_url: e.target.value }))
+                setForm((prev) => ({ ...prev, snapchat_url: e.target.value }))
               }
-              placeholder="https://t.me/..."
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="youtube_url">{t("settings.youtube")}</Label>
-            <Input
-              id="youtube_url"
-              type="url"
-              value={form.youtube_url}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, youtube_url: e.target.value }))
-              }
-              placeholder="https://youtube.com/..."
+              placeholder="https://snapchat.com/add/..."
             />
           </div>
         </CardContent>

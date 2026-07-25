@@ -60,6 +60,7 @@ function withSettingsDefaults(
   return {
     ...data,
     email_addresses: data.email_addresses ?? [],
+    snapchat_url: data.snapchat_url ?? null,
     theme_colors: resolveThemeColors(data.theme_colors),
   };
 }
