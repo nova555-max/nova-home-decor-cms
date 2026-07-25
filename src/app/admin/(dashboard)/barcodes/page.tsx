@@ -1,4 +1,4 @@
-import { CategoryBarcodesManager } from "@/components/admin/category-barcodes-manager";
+import { ShowroomQrManager } from "@/components/admin/showroom-qr-manager";
 import { getAdminCategories, getWebsiteSettings } from "@/lib/queries/cms";
 
 export default async function AdminBarcodesPage() {
@@ -7,7 +7,5 @@ export default async function AdminBarcodesPage() {
     getWebsiteSettings(),
   ]);
 
-  return (
-    <CategoryBarcodesManager categories={categories} settings={settings} />
-  );
+  return <ShowroomQrManager categories={categories} settings={settings} />;
 }

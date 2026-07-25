@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 
 import { useDirection } from "@/hooks";
 import { categoryHasChildren } from "@/lib/categories/tree";
@@ -24,7 +25,6 @@ import { HomepageOrderedSections } from "@/components/public/homepage-ordered-se
 import { ShowroomTheme } from "@/components/public/showroom-theme";
 import { SiteHeader } from "@/components/public/site-header";
 import { ShowroomChrome } from "@/components/public/showroom/showroom-chrome";
-import dynamic from "next/dynamic";
 
 const SiteFooter = dynamic(
   () =>
@@ -40,6 +40,18 @@ function SectionPlaceholder({ className }: { className?: string }) {
       aria-hidden
       className={`mx-auto w-full max-w-[1400px] animate-pulse rounded-[20px] bg-muted/60 ${className ?? "h-64"}`}
     />
+  );
+}
+
+function findCategoryFromQuery(categories: Category[]): Category | null {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  const slug = params.get("c")?.trim().toLowerCase();
+  if (!slug) return null;
+  return (
+    categories.find((c) => c.slug?.toLowerCase() === slug) ??
+    categories.find((c) => c.id === slug) ??
+    null
   );
 }
 
@@ -69,6 +81,32 @@ export function PublicHome({
   const { locale, direction } = useDirection();
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const [browseParentId, setBrowseParentId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fromQr = findCategoryFromQuery(categories);
+    if (!fromQr) return;
+
+    if (categoryHasChildren(categories, fromQr.id)) {
+      setBrowseParentId(fromQr.id);
+      setActiveCategoryId(null);
+      requestAnimationFrame(() => {
+        document.getElementById("categories")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      });
+      return;
+    }
+
+    setActiveCategoryId(fromQr.id);
+    setBrowseParentId(fromQr.parent_id ?? null);
+    requestAnimationFrame(() => {
+      document.getElementById("products")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }, [categories]);
 
   const manager = normalizeSectionManager(
     homepage?.section_manager,

@@ -6,9 +6,13 @@ import { Loader2, MapPin, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { updateWebsiteSettings } from "@/lib/actions/cms";
-import { DEFAULT_SHOWROOM_THEME } from "@/lib/constants";
 import { refreshPreservingScroll } from "@/lib/navigation/refresh-preserving-scroll";
-import type { EmailAddress, ShowroomThemeColors, WebsiteSettings } from "@/types/database";
+import {
+  resolvePresetIdFromColors,
+  themePayloadForPreset,
+  SHOWROOM_THEME_PRESETS,
+} from "@/lib/theme/showroom-presets";
+import type { EmailAddress, WebsiteSettings } from "@/types/database";
 import type { HeroSlide } from "@/types/hero-slides";
 import { BrandingImageUpload } from "@/components/admin/branding-image-upload";
 import { HeroSliderManager } from "@/components/admin/hero-slider-manager";
@@ -38,17 +42,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 type SettingsFormProps = {
   settings: WebsiteSettings | null;
   heroSlides?: HeroSlide[];
 };
 
-const THEME_KEYS = Object.keys(
-  DEFAULT_SHOWROOM_THEME,
-) as (keyof ShowroomThemeColors)[];
-
 function toFormState(settings: WebsiteSettings | null) {
+  const presetId = resolvePresetIdFromColors(settings?.theme_colors);
   return {
     company_logo: settings?.company_logo ?? "",
     favicon_url: settings?.favicon_url ?? "",
@@ -62,10 +64,8 @@ function toFormState(settings: WebsiteSettings | null) {
     tiktok_url: settings?.tiktok_url ?? "",
     snapchat_url: settings?.snapchat_url ?? "",
     email_addresses: settings?.email_addresses ?? [],
-    theme_colors: {
-      ...DEFAULT_SHOWROOM_THEME,
-      ...(settings?.theme_colors ?? {}),
-    },
+    theme_preset_id: presetId,
+    theme_colors: themePayloadForPreset(presetId),
   };
 }
 
@@ -533,44 +533,54 @@ export function SettingsForm({
           <CardTitle>{t("settings.theme")}</CardTitle>
           <CardDescription>{t("settings.theme_desc")}</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          {THEME_KEYS.map((key) => (
-            <div key={key} className="space-y-2">
-              <Label htmlFor={`theme_${key}`}>
-                {t(`settings.theme_${key}` as "settings.theme_primary")}
-              </Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id={`theme_${key}`}
-                  type="color"
-                  value={form.theme_colors[key]}
-                  onChange={(e) =>
+        <CardContent className="space-y-4">
+          <p className="text-muted-foreground text-xs">
+            {t("settings.theme_dark_hint")}
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {SHOWROOM_THEME_PRESETS.map((preset) => {
+              const selected = form.theme_preset_id === preset.id;
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() =>
                     setForm((prev) => ({
                       ...prev,
-                      theme_colors: {
-                        ...prev.theme_colors,
-                        [key]: e.target.value,
-                      },
+                      theme_preset_id: preset.id,
+                      theme_colors: themePayloadForPreset(preset.id),
                     }))
                   }
-                  className="h-10 w-14 shrink-0 cursor-pointer rounded-lg p-1"
-                />
-                <Input
-                  value={form.theme_colors[key]}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      theme_colors: {
-                        ...prev.theme_colors,
-                        [key]: e.target.value,
-                      },
-                    }))
-                  }
-                  className="font-mono text-sm"
-                />
-              </div>
-            </div>
-          ))}
+                  className={cn(
+                    "rounded-2xl border p-3 text-start transition",
+                    selected
+                      ? "border-primary ring-primary/30 bg-primary/5 ring-2"
+                      : "border-border/60 hover:border-primary/40 bg-card",
+                  )}
+                >
+                  <div className="mb-3 flex h-14 overflow-hidden rounded-xl">
+                    {preset.swatches.map((color) => (
+                      <span
+                        key={color}
+                        className="h-full flex-1"
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-sm font-medium">
+                    {t(
+                      `settings.theme_presets.${preset.nameKey}` as "settings.theme",
+                    )}
+                  </p>
+                  <p className="text-muted-foreground mt-1 text-[11px]">
+                    {selected
+                      ? t("settings.theme_selected")
+                      : t("settings.theme_select")}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
         </CardContent>
       </Card>
 

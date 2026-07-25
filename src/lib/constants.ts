@@ -36,7 +36,7 @@ export const ADMIN_NAV = [
   { titleKey: "office_location", href: "/admin/office-location", icon: "MapPin" },
   { titleKey: "content", href: "/admin/content", icon: "FileText" },
   { titleKey: "categories", href: "/admin/categories", icon: "FolderTree" },
-  { titleKey: "barcodes", href: "/admin/barcodes", icon: "Barcode" },
+  { titleKey: "barcodes", href: "/admin/barcodes", icon: "QrCode" },
   { titleKey: "products", href: "/admin/products", icon: "Package" },
   { titleKey: "projects", href: "/admin/projects", icon: "Briefcase" },
   { titleKey: "gallery", href: "/admin/gallery", icon: "Images" },

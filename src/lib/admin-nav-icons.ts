@@ -1,5 +1,4 @@
 import {
-  Barcode,
   Briefcase,
   ClipboardCheck,
   FileText,
@@ -11,6 +10,7 @@ import {
   LayoutDashboard,
   MapPin,
   Package,
+  QrCode,
   Search,
   Settings,
   Trash2,
@@ -29,7 +29,7 @@ export const ADMIN_NAV_ICONS: Record<AdminNavIconName, LucideIcon> = {
   MapPin,
   FileText,
   FolderTree,
-  Barcode,
+  QrCode,
   Package,
   Briefcase,
   Images,

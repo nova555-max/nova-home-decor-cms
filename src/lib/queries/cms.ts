@@ -2,6 +2,10 @@ import { unstable_cache } from "next/cache";
 
 import { CACHE_TAGS, DEFAULT_SECTION_VISIBILITY, DEFAULT_SHOWROOM_THEME } from "@/lib/constants";
 import {
+  colorsForPreset,
+  resolvePresetIdFromColors,
+} from "@/lib/theme/showroom-presets";
+import {
   normalizeSectionManager,
   deriveLegacyVisibility,
 } from "@/lib/homepage/section-registry";
@@ -48,9 +52,13 @@ import type { SearchItem } from "@/types/dashboard";
 function resolveThemeColors(
   theme_colors: ShowroomThemeColors | null | undefined,
 ): ShowroomThemeColors {
+  const presetId = resolvePresetIdFromColors(theme_colors);
+  const light = colorsForPreset(presetId, "light");
   return {
     ...DEFAULT_SHOWROOM_THEME,
+    ...light,
     ...(theme_colors ?? {}),
+    preset_id: presetId,
   };
 }
 

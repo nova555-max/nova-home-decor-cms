@@ -17,6 +17,8 @@ export type ShowroomThemeColors = {
   muted: string;
   border: string;
   card: string;
+  /** Curated showroom palette id (light + dark supported). */
+  preset_id?: string | null;
 };
 
 export type WebsiteSettings = {
