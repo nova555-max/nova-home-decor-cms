@@ -119,7 +119,9 @@ type HomepageOrderedSectionsProps = {
   office: OfficeLocation | null;
   heroSlides?: HeroSlide[];
   activeCategoryId: string | null;
+  browseParentId: string | null;
   onSelectCategory: (id: string | null) => void;
+  onBrowseBack: () => void;
 };
 
 export function HomepageOrderedSections({
@@ -135,7 +137,9 @@ export function HomepageOrderedSections({
   office,
   heroSlides = [],
   activeCategoryId,
+  browseParentId,
   onSelectCategory,
+  onBrowseBack,
 }: HomepageOrderedSectionsProps) {
   const renderedTypes = new Set<string>();
 
@@ -184,7 +188,9 @@ export function HomepageOrderedSections({
                   categories={categories}
                   homepage={homepage}
                   locale={locale}
+                  browseParentId={browseParentId}
                   onSelectCategory={onSelectCategory}
+                  onBrowseBack={onBrowseBack}
                 />
               </div>
             );
@@ -197,6 +203,7 @@ export function HomepageOrderedSections({
                   homepage={homepage}
                   locale={locale}
                   activeCategoryId={activeCategoryId}
+                  browseParentId={browseParentId}
                   onCategoryChange={onSelectCategory}
                 />
               </div>

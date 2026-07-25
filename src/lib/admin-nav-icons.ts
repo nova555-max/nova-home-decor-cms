@@ -1,4 +1,5 @@
 import {
+  Barcode,
   Briefcase,
   ClipboardCheck,
   FileText,
@@ -28,6 +29,7 @@ export const ADMIN_NAV_ICONS: Record<AdminNavIconName, LucideIcon> = {
   MapPin,
   FileText,
   FolderTree,
+  Barcode,
   Package,
   Briefcase,
   Images,

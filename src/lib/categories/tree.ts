@@ -53,6 +53,33 @@ export function getCategorySubtreeIds(
   return ids;
 }
 
+/** Direct children of a category (one level). */
+export function getDirectChildren(
+  categories: Category[],
+  parentId: string | null,
+): Category[] {
+  return (childrenMap(categories).get(parentId) ?? []).slice();
+}
+
+export function categoryHasChildren(
+  categories: Category[],
+  categoryId: string,
+): boolean {
+  return getDirectChildren(categories, categoryId).length > 0;
+}
+
+/** Top-level categories only. */
+export function getRootCategories(categories: Category[]): Category[] {
+  return getDirectChildren(categories, null);
+}
+
+/** Barcode payload for a root category (stable, printable). */
+export function categoryBarcodeValue(category: Pick<Category, "slug" | "id">) {
+  const slug = category.slug?.trim();
+  if (slug) return `NOVA-${slug}`.toUpperCase().slice(0, 48);
+  return `NOVA-${category.id.replace(/-/g, "").slice(0, 12)}`.toUpperCase();
+}
+
 export function wouldCreateCategoryCycle(
   categories: Array<Pick<Category, "id" | "parent_id">>,
   categoryId: string | null | undefined,

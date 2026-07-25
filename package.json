@@ -51,6 +51,7 @@
     "embla-carousel-fade": "^8.6.0",
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.42.2",
+    "jsbarcode": "^3.12.3",
     "leaflet": "^1.9.4",
     "libphonenumber-js": "^1.13.8",
     "lucide-react": "^1.24.0",

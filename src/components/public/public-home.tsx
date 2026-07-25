@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { useDirection } from "@/hooks";
+import { categoryHasChildren } from "@/lib/categories/tree";
 import {
   getOrderedPublicSections,
   isSectionPubliclyVisible,
@@ -67,13 +68,51 @@ export function PublicHome({
 }: PublicHomeProps) {
   const { locale, direction } = useDirection();
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
+  const [browseParentId, setBrowseParentId] = useState<string | null>(null);
 
   const manager = normalizeSectionManager(
     homepage?.section_manager,
     homepage?.section_visibility,
   );
   const orderedSections = getOrderedPublicSections(manager);
-  const footerSection = manager.sections.find((section) => section.type === "footer");
+  const footerSection = manager.sections.find(
+    (section) => section.type === "footer",
+  );
+
+  const handleSelectCategory = (id: string | null) => {
+    if (id === null) {
+      setBrowseParentId(null);
+      setActiveCategoryId(null);
+      return;
+    }
+
+    if (categoryHasChildren(categories, id)) {
+      setBrowseParentId(id);
+      setActiveCategoryId(null);
+      requestAnimationFrame(() => {
+        document.getElementById("categories")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      });
+      return;
+    }
+
+    const selected = categories.find((c) => c.id === id);
+    setActiveCategoryId(id);
+    setBrowseParentId(selected?.parent_id ?? null);
+    requestAnimationFrame(() => {
+      document.getElementById("products")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  };
+
+  const handleBrowseBack = () => {
+    setBrowseParentId(null);
+    setActiveCategoryId(null);
+  };
 
   return (
     <div data-showroom className="bg-background text-foreground pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
@@ -94,7 +133,9 @@ export function PublicHome({
           office={office}
           heroSlides={heroSlides}
           activeCategoryId={activeCategoryId}
-          onSelectCategory={setActiveCategoryId}
+          browseParentId={browseParentId}
+          onSelectCategory={handleSelectCategory}
+          onBrowseBack={handleBrowseBack}
         />
       </main>
 

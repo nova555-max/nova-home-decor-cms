@@ -65,7 +65,12 @@ const ku = {
   pages: {
     categories: {
       title: "پۆلەکان",
-      subtitle: "تەنها ناوی پۆل بنووسە — خێرا و سادە.",
+      subtitle:
+        "پۆلی سەرەکی (وەک دەرگا) دروست بکە، پاشان ژێرپۆل (تورکی / سینی) لەناویدا زیاد بکە.",
+    },
+    barcodes: {
+      title: "بارکۆدی بەشەکان",
+      subtitle: "بارکۆد بۆ بەشە سەرەکییەکان دروست بکە و وەک A4 چاپ یان داگری.",
     },
     products: {
       title: "بەرهەمەکان",
@@ -122,6 +127,7 @@ const ku = {
     office_location: "بەڕێوەبردنی شوێنی ئۆفیس",
     content: "بەڕێوەبردنی ناوەڕۆک",
     categories: "پۆلەکان",
+    barcodes: "بارکۆد",
     products: "بەرهەمەکان",
     projects: "پڕۆژەکان",
     gallery: "گالەری",
@@ -156,10 +162,22 @@ const ku = {
     empty: "هێشتا پۆل نییە — لە سەرەوە یەکێک زیاد بکە",
     parent: "پۆلی باوک",
     parent_none: "پۆلی سەرەکی (بەبێ باوک)",
-    parent_hint: "هەڵبژێرە بۆ دروستکردنی پۆل لەناو پۆلێکی تر",
+    parent_hint:
+      "نموونە: پۆلی سەرەکی «دەرگا» دروست بکە، پاشان «دەرگای تورکی» و «دەرگای سینی» بە پۆلی باوک = دەرگا زیاد بکە",
     parent_invalid: "ناتوانرێت پۆل لەژێر خۆی یان منداڵەکانیدا دابنرێت",
     parent_depth: "تەنها یەک ئاستی ژێرپۆل ڕێگەپێدراوە",
     subcategory: "ژێرپۆل",
+  },
+  barcodes: {
+    roots_title: "بەشە سەرەکییەکان",
+    roots_hint: "بارکۆد تەنها بۆ پۆلە سەرەکییەکان (بەبێ باوک) دروست دەکرێت.",
+    select_all: "هەمووی هەڵبژێرە",
+    clear: "پاککردنەوە",
+    print_a4: "چاپ / A4",
+    download_pdf: "داگرتن وەک PDF",
+    select_required: "لانیکەم یەک بەش هەڵبژێرە",
+    sheet_title: "بارکۆدی بەشەکان",
+    sheet_subtitle: "بۆ مەغزەن و نیشانەکردنی بەشە سەرەکییەکان",
   },
   products: {
     add: "زیادکردنی بەرهەم",
@@ -783,7 +801,12 @@ const ar = {
   pages: {
     categories: {
       title: "التصنيفات",
-      subtitle: "اكتب اسم التصنيف فقط — بسيط وسريع.",
+      subtitle:
+        "أنشئ تصنيفاً رئيسياً (مثل الأبواب) ثم أضف فروعاً داخله (تركي / صيني).",
+    },
+    barcodes: {
+      title: "باركود الأقسام",
+      subtitle: "أنشئ باركوداً للأقسام الرئيسية واطبع أو حمّل كـ A4.",
     },
     products: { title: "المنتجات", subtitle: "أدر كatalog المنتجات." },
     projects: { title: "المشاريع", subtitle: "اعرض الأعمال المنجزة." },
@@ -837,6 +860,7 @@ const ar = {
     office_location: "إدارة موقع المكتب",
     content: "إدارة المحتوى",
     categories: "التصنيفات",
+    barcodes: "الباركود",
     products: "المنتجات",
     projects: "المشاريع",
     gallery: "المعرض",
@@ -871,10 +895,22 @@ const ar = {
     empty: "لا توجد تصنيفات بعد — أضف واحداً من الأعلى",
     parent: "التصنيف الأب",
     parent_none: "تصنيف رئيسي (بدون أب)",
-    parent_hint: "اختر لإنشاء تصنيف داخل تصنيف آخر",
+    parent_hint:
+      "مثال: أنشئ «أبواب» كرئيسي، ثم أضف «باب تركي» و«باب صيني» مع الأب = أبواب",
     parent_invalid: "لا يمكن وضع التصنيف تحت نفسه أو فروعه",
     parent_depth: "يُسمح بمستوى فرعي واحد فقط",
     subcategory: "تصنيف فرعي",
+  },
+  barcodes: {
+    roots_title: "الأقسام الرئيسية",
+    roots_hint: "الباركود يُنشأ فقط للتصنيفات الرئيسية (بدون أب).",
+    select_all: "تحديد الكل",
+    clear: "مسح",
+    print_a4: "طباعة / A4",
+    download_pdf: "تحميل PDF",
+    select_required: "اختر قسماً واحداً على الأقل",
+    sheet_title: "باركود الأقسام",
+    sheet_subtitle: "للمخزن ووسم الأقسام الرئيسية",
   },
   products: {
     add: "إضافة منتج",
@@ -1496,7 +1532,12 @@ const en = {
   pages: {
     categories: {
       title: "Categories",
-      subtitle: "Enter the category name only — quick and simple.",
+      subtitle:
+        "Create a main category (e.g. Doors), then add subcategories inside it (Turkish / Chinese).",
+    },
+    barcodes: {
+      title: "Category barcodes",
+      subtitle: "Generate barcodes for main categories and print or save as A4.",
     },
     products: { title: "Products", subtitle: "Manage your product catalog." },
     projects: { title: "Projects", subtitle: "Showcase completed work." },
@@ -1550,6 +1591,7 @@ const en = {
     office_location: "Office Location",
     content: "Content Management",
     categories: "Categories",
+    barcodes: "Barcodes",
     products: "Products",
     projects: "Projects",
     gallery: "Gallery",
@@ -1584,10 +1626,22 @@ const en = {
     empty: "No categories yet — add one above",
     parent: "Parent category",
     parent_none: "Top-level (no parent)",
-    parent_hint: "Choose a parent to create a subcategory",
+    parent_hint:
+      "Example: create “Doors” as main, then add “Turkish doors” and “Chinese doors” with parent = Doors",
     parent_invalid: "Cannot nest a category under itself or its children",
     parent_depth: "Only one subcategory level is allowed",
     subcategory: "Subcategory",
+  },
+  barcodes: {
+    roots_title: "Main categories",
+    roots_hint: "Barcodes are generated only for top-level categories (no parent).",
+    select_all: "Select all",
+    clear: "Clear",
+    print_a4: "Print / A4",
+    download_pdf: "Download PDF",
+    select_required: "Select at least one category",
+    sheet_title: "Category barcodes",
+    sheet_subtitle: "For warehouse labeling of main sections",
   },
   products: {
     add: "Add product",

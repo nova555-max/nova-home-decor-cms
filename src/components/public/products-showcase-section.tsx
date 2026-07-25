@@ -3,7 +3,6 @@
 import { useMemo } from "react";
 
 import type { Locale } from "@/config/site";
-import { getCategorySubtreeIds } from "@/lib/categories/tree";
 import { t } from "@/lib/i18n";
 import { getSectionHeading } from "@/lib/showroom/content";
 import type { Category, HomepageContent, Product } from "@/types/database";
@@ -17,6 +16,7 @@ type ProductsShowcaseSectionProps = {
   homepage: HomepageContent | null;
   locale: Locale;
   activeCategoryId: string | null;
+  browseParentId?: string | null;
   onCategoryChange: (categoryId: string | null) => void;
 };
 
@@ -30,6 +30,7 @@ export function ProductsShowcaseSection({
   homepage,
   locale,
   activeCategoryId,
+  browseParentId,
   onCategoryChange,
 }: ProductsShowcaseSectionProps) {
   const featured = useMemo(
@@ -38,12 +39,14 @@ export function ProductsShowcaseSection({
   );
 
   const filteredProducts = useMemo(() => {
-    if (!activeCategoryId) return sortProducts(products);
-    const ids = getCategorySubtreeIds(categories, activeCategoryId);
-    return sortProducts(
-      products.filter((p) => p.category_id && ids.has(p.category_id)),
-    );
-  }, [products, activeCategoryId, categories]);
+    // Subcategory / leaf: only that category's products.
+    if (activeCategoryId) {
+      return sortProducts(
+        products.filter((p) => p.category_id === activeCategoryId),
+      );
+    }
+    return sortProducts(products);
+  }, [products, activeCategoryId]);
 
   const displayProducts =
     activeCategoryId != null
@@ -75,6 +78,7 @@ export function ProductsShowcaseSection({
           categories={categories}
           locale={locale}
           activeId={activeCategoryId}
+          browseParentId={browseParentId}
           onSelect={onCategoryChange}
           className="mb-12"
           variant="luxury"

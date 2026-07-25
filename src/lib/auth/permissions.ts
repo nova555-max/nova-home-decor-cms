@@ -57,6 +57,7 @@ const ROUTE_MODULE_MAP: Record<string, AdminModule | null> = {
   "/admin/office-location": "settings",
   "/admin/content": "content",
   "/admin/categories": "categories",
+  "/admin/barcodes": "categories",
   "/admin/products": "products",
   "/admin/projects": "projects",
   "/admin/gallery": "gallery",

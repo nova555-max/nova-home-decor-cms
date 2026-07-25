@@ -3,7 +3,11 @@
 import { useMemo } from "react";
 import { motion } from "@/lib/motion";
 import type { Locale } from "@/config/site";
-import { flattenCategoryTree } from "@/lib/categories/tree";
+import {
+  categoryHasChildren,
+  getDirectChildren,
+  getRootCategories,
+} from "@/lib/categories/tree";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { categoryName, type Category } from "@/types/database";
@@ -12,6 +16,7 @@ type CategoryFilterProps = {
   categories: Category[];
   locale: Locale;
   activeId: string | null;
+  browseParentId?: string | null;
   onSelect: (categoryId: string | null) => void;
   className?: string;
   variant?: "default" | "luxury";
@@ -21,39 +26,54 @@ export function CategoryFilter({
   categories,
   locale,
   activeId,
+  browseParentId = null,
   onSelect,
   className,
   variant = "default",
 }: CategoryFilterProps) {
   const allLabel = t(locale, "common", "all_categories");
   const isLuxury = variant === "luxury";
-  const ordered = useMemo(
-    () => flattenCategoryTree(categories),
-    [categories],
-  );
+
+  const pills = useMemo(() => {
+    if (browseParentId) {
+      return getDirectChildren(categories, browseParentId);
+    }
+    return getRootCategories(categories);
+  }, [categories, browseParentId]);
+
+  const parent = browseParentId
+    ? categories.find((c) => c.id === browseParentId)
+    : null;
 
   return (
     <div className={cn("w-full", className)}>
+      {parent ? (
+        <p className="text-muted-foreground mb-4 text-center text-xs tracking-[0.18em] uppercase">
+          {categoryName(parent, locale)}
+        </p>
+      ) : null}
       <div className="scrollbar-hide flex flex-wrap items-center justify-center gap-3">
         <FilterPill
           label={allLabel}
-          isActive={activeId === null}
+          isActive={activeId === null && browseParentId === null}
           onClick={() => onSelect(null)}
           luxury={isLuxury}
         />
-        {ordered.map((category) => (
-          <FilterPill
-            key={category.id}
-            label={
-              category.depth > 0
-                ? `↳ ${categoryName(category, locale)}`
-                : categoryName(category, locale)
-            }
-            isActive={activeId === category.id}
-            onClick={() => onSelect(category.id)}
-            luxury={isLuxury}
-          />
-        ))}
+        {pills.map((category) => {
+          const hasKids = categoryHasChildren(categories, category.id);
+          const isActive =
+            activeId === category.id ||
+            (hasKids && browseParentId === category.id && activeId === null);
+          return (
+            <FilterPill
+              key={category.id}
+              label={categoryName(category, locale)}
+              isActive={isActive}
+              onClick={() => onSelect(category.id)}
+              luxury={isLuxury}
+            />
+          );
+        })}
       </div>
     </div>
   );
