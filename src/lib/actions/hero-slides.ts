@@ -6,8 +6,7 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 
 import type { ActionResult } from "@/lib/actions/action-types";
-import { actionErrorMessage } from "@/lib/actions/action-utils";
-import { CACHE_TAGS } from "@/lib/constants";
+import { CACHE_TAGS, HERO_SLIDES_BUCKET } from "@/lib/constants";
 import {
   isLocalDevCms,
   needsServiceRoleForWrites,
@@ -17,7 +16,11 @@ import { assertPersistableMediaUrl } from "@/lib/media/storage-url";
 import { getAdminHeroSlides } from "@/lib/queries/hero-slides";
 import { createCmsClient } from "@/lib/supabase/cms-client";
 import { requirePermission } from "@/lib/supabase/auth";
-import { uploadFileAndRegisterAsset } from "@/lib/upload/server-upload";
+import {
+  deleteHeroSlideStorageObject,
+  uploadHeroSlideToStorage,
+  validateHeroSlideFile,
+} from "@/lib/upload/hero-slide-upload";
 import {
   HERO_SLIDES_MAX,
   type HeroSlide,
@@ -59,6 +62,11 @@ function normalizeSchedule(
   return { starts_at, ends_at };
 }
 
+function validateImageUrl(url: string): string | null {
+  if (isLocalDevCms()) return null;
+  return assertPersistableMediaUrl(url, "Hero image", [HERO_SLIDES_BUCKET]);
+}
+
 export async function getHeroSliderData(): Promise<HeroSlide[]> {
   await requirePermission("homepage");
   return getAdminHeroSlides();
@@ -66,7 +74,7 @@ export async function getHeroSliderData(): Promise<HeroSlide[]> {
 
 export async function uploadHeroSlideImage(
   formData: FormData,
-): Promise<ActionResult<{ publicUrl: string }>> {
+): Promise<ActionResult<{ publicUrl: string; path: string }>> {
   await requirePermission("homepage");
 
   if (needsServiceRoleForWrites() && !isLocalDevCms()) {
@@ -74,23 +82,101 @@ export async function uploadHeroSlideImage(
   }
 
   const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) {
+  if (!(file instanceof File)) {
     return { success: false, error: "No image file provided." };
   }
 
-  const result = await uploadFileAndRegisterAsset(file, "hero-slides");
-  if (!result.success) return result;
+  const validationError = validateHeroSlideFile(file);
+  if (validationError) {
+    return { success: false, error: validationError };
+  }
 
-  try {
-    assertPersistableMediaUrl(result.data.publicUrl);
-  } catch (err) {
+  return uploadHeroSlideToStorage(file);
+}
+
+/**
+ * Upload to the hero_slides bucket and insert a DB row in one step.
+ * If the DB insert fails after a successful upload, the storage object is deleted.
+ */
+export async function uploadAndCreateHeroSlide(
+  formData: FormData,
+): Promise<ActionResult<HeroSlide>> {
+  await requirePermission("homepage");
+
+  if (needsServiceRoleForWrites() && !isLocalDevCms()) {
+    return { success: false, error: SERVICE_ROLE_REQUIRED_MSG };
+  }
+
+  const file = formData.get("file");
+  if (!(file instanceof File)) {
+    return { success: false, error: "No image file provided." };
+  }
+
+  const validationError = validateHeroSlideFile(file);
+  if (validationError) {
+    return { success: false, error: validationError };
+  }
+
+  const existing = await getAdminHeroSlides();
+  if (existing.length >= HERO_SLIDES_MAX) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : "Invalid upload URL",
+      error: `Maximum of ${HERO_SLIDES_MAX} hero slides allowed.`,
     };
   }
 
-  return { success: true, data: { publicUrl: result.data.publicUrl } };
+  const uploaded = await uploadHeroSlideToStorage(file);
+  if (!uploaded.success) {
+    return uploaded;
+  }
+
+  const display_order =
+    existing.length === 0
+      ? 0
+      : Math.max(...existing.map((s) => s.display_order)) + 1;
+
+  const payload = {
+    image_url: uploaded.data.publicUrl,
+    title: null as string | null,
+    subtitle: null as string | null,
+    button_text: null as string | null,
+    button_link: null as string | null,
+    display_order,
+    is_active: true,
+    starts_at: null as string | null,
+    ends_at: null as string | null,
+  };
+
+  if (isLocalDevCms()) {
+    const now = new Date().toISOString();
+    const slide: HeroSlide = {
+      id: randomUUID(),
+      ...payload,
+      created_at: now,
+      updated_at: now,
+    };
+    await writeLocalSlides([...existing, slide]);
+    revalidateTag(CACHE_TAGS.heroSlides);
+    return { success: true, data: slide };
+  }
+
+  const supabase = await createCmsClient();
+  const { data, error } = await supabase
+    .from("hero_slides")
+    .insert(payload)
+    .select("*")
+    .single();
+
+  if (error || !data) {
+    await deleteHeroSlideStorageObject(uploaded.data.publicUrl);
+    return {
+      success: false,
+      error: error?.message ?? "Could not create slide.",
+    };
+  }
+
+  revalidateTag(CACHE_TAGS.heroSlides);
+  return { success: true, data: data as HeroSlide };
 }
 
 export async function createHeroSlide(
@@ -102,13 +188,9 @@ export async function createHeroSlide(
     return { success: false, error: SERVICE_ROLE_REQUIRED_MSG };
   }
 
-  try {
-    assertPersistableMediaUrl(input.image_url);
-  } catch (err) {
-    return {
-      success: false,
-      error: err instanceof Error ? err.message : "Invalid image URL",
-    };
+  const urlError = validateImageUrl(input.image_url);
+  if (urlError) {
+    return { success: false, error: urlError };
   }
 
   const schedule = normalizeSchedule(input.starts_at, input.ends_at);
@@ -166,7 +248,7 @@ export async function createHeroSlide(
   if (error || !data) {
     return {
       success: false,
-      error: actionErrorMessage(error?.message ?? "Could not create slide."),
+      error: error?.message ?? "Could not create slide.",
     };
   }
 
@@ -187,13 +269,9 @@ export async function updateHeroSlide(
   if (!id) return { success: false, error: "Slide id is required." };
 
   if (patch.image_url) {
-    try {
-      assertPersistableMediaUrl(patch.image_url);
-    } catch (err) {
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : "Invalid image URL",
-      };
+    const urlError = validateImageUrl(patch.image_url);
+    if (urlError) {
+      return { success: false, error: urlError };
     }
   }
 
@@ -243,7 +321,7 @@ export async function updateHeroSlide(
   if (error || !data) {
     return {
       success: false,
-      error: actionErrorMessage(error?.message ?? "Could not update slide."),
+      error: error?.message ?? "Could not update slide.",
     };
   }
 
@@ -270,9 +348,23 @@ export async function deleteHeroSlide(
   }
 
   const supabase = await createCmsClient();
+  const { data: existing, error: fetchError } = await supabase
+    .from("hero_slides")
+    .select("image_url")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (fetchError) {
+    return { success: false, error: fetchError.message };
+  }
+
   const { error } = await supabase.from("hero_slides").delete().eq("id", id);
   if (error) {
-    return { success: false, error: actionErrorMessage(error.message) };
+    return { success: false, error: error.message };
+  }
+
+  if (existing?.image_url) {
+    await deleteHeroSlideStorageObject(existing.image_url);
   }
 
   revalidateTag(CACHE_TAGS.heroSlides);
@@ -319,7 +411,7 @@ export async function reorderHeroSlides(
       .update({ display_order: index })
       .eq("id", orderedIds[index]);
     if (error) {
-      return { success: false, error: actionErrorMessage(error.message) };
+      return { success: false, error: error.message };
     }
   }
 

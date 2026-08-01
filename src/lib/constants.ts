@@ -1,4 +1,6 @@
 export const STORAGE_BUCKET = "cms-uploads";
+/** Dedicated public bucket for homepage hero slider images */
+export const HERO_SLIDES_BUCKET = "hero_slides";
 
 export const CACHE_TAGS = {
   settings: "website-settings",

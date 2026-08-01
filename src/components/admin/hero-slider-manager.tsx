@@ -37,17 +37,17 @@ import {
 import { toast } from "sonner";
 
 import {
-  createHeroSlide,
   deleteHeroSlide,
   reorderHeroSlides,
   saveHeroSlidesBatch,
-  uploadHeroSlideImage,
+  uploadAndCreateHeroSlide,
 } from "@/lib/actions/hero-slides";
 import { prepareImageForUpload } from "@/lib/image-utils";
 import { useAdminT } from "@/hooks";
 import { useSubmitLock } from "@/hooks/use-submit-lock";
 import {
   HERO_SLIDE_ACCEPT,
+  HERO_SLIDE_ACCEPT_ATTR,
   HERO_SLIDE_MAX_BYTES,
   HERO_SLIDES_MAX,
   type HeroSlide,
@@ -93,11 +93,43 @@ function toLocalDatetime(value: string | null): string {
 }
 
 function isAllowedHeroImage(file: File): boolean {
-  if (HERO_SLIDE_ACCEPT.includes(file.type as (typeof HERO_SLIDE_ACCEPT)[number])) {
+  const mime = (file.type || "").trim().toLowerCase();
+  if (
+    HERO_SLIDE_ACCEPT.includes(mime as (typeof HERO_SLIDE_ACCEPT)[number]) ||
+    mime === "image/jpg"
+  ) {
+    return true;
+  }
+  // Safari/iOS often sends an empty MIME — trust the extension.
+  if (!mime) {
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    return ext === "jpg" || ext === "jpeg" || ext === "png" || ext === "webp";
+  }
+  return false;
+}
+
+/** iPhone photos may arrive as HEIC — we accept them only if we can convert. */
+function canAttemptHeroConvert(file: File): boolean {
+  if (isAllowedHeroImage(file)) return true;
+  const mime = (file.type || "").trim().toLowerCase();
+  if (mime === "image/heic" || mime === "image/heif" || mime.startsWith("image/")) {
     return true;
   }
   const ext = file.name.split(".").pop()?.toLowerCase();
-  return ext === "jpg" || ext === "jpeg" || ext === "png" || ext === "webp";
+  return ext === "heic" || ext === "heif";
+}
+
+function formatUploadError(err: unknown, fallback: string): string {
+  if (err instanceof Error && err.message.trim()) {
+    const message = err.message.trim();
+    // Next.js wraps oversized server-action bodies with this generic string.
+    if (message.toLowerCase().includes("unexpected response")) {
+      return "Upload failed: file may be too large for the server action. Try a smaller image (max 10MB).";
+    }
+    return message;
+  }
+  if (typeof err === "string" && err.trim()) return err.trim();
+  return fallback;
 }
 
 function SortableSlideCard({
@@ -344,7 +376,7 @@ export function HeroSliderManager({
     for (const file of selected) {
       const uploadId = `${file.name}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-      if (!isAllowedHeroImage(file)) {
+      if (!canAttemptHeroConvert(file)) {
         toast.error(t("hero_slider.invalid_type"));
         continue;
       }
@@ -358,43 +390,65 @@ export function HeroSliderManager({
         {
           id: uploadId,
           name: file.name,
-          progress: 8,
+          progress: 5,
           status: "compressing",
         },
       ]);
 
+      let progressTimer: ReturnType<typeof setInterval> | undefined;
+
       try {
-        const prepared = await prepareImageForUpload(file);
         setUploads((prev) =>
           prev.map((u) =>
             u.id === uploadId
-              ? { ...u, progress: 35, status: "uploading" }
+              ? { ...u, progress: 18, status: "compressing" }
               : u,
           ),
         );
 
-        const formData = new FormData();
-        formData.append("file", prepared);
-        const uploaded = await uploadHeroSlideImage(formData);
-        if (!uploaded.success) {
-          throw new Error(uploaded.error);
+        // Prefer compressed JPEG/WebP for Safari/iPhone HEIC/large photos.
+        let prepared: File;
+        try {
+          prepared = await prepareImageForUpload(file);
+        } catch {
+          prepared = file;
+        }
+
+        // After compress, ensure we still have an allowed type (HEIC may fail).
+        if (!isAllowedHeroImage(prepared)) {
+          throw new Error(t("hero_slider.invalid_type"));
+        }
+        if (prepared.size > HERO_SLIDE_MAX_BYTES) {
+          throw new Error(t("hero_slider.too_large"));
         }
 
         setUploads((prev) =>
           prev.map((u) =>
-            u.id === uploadId ? { ...u, progress: 75, status: "uploading" } : u,
+            u.id === uploadId
+              ? { ...u, progress: 40, status: "uploading" }
+              : u,
           ),
         );
 
-        const created = await createHeroSlide({
-          image_url: uploaded.data.publicUrl,
-          is_active: true,
-          display_order: slides.length,
-        });
+        progressTimer = setInterval(() => {
+          setUploads((prev) =>
+            prev.map((u) =>
+              u.id === uploadId && u.status === "uploading" && u.progress < 85
+                ? { ...u, progress: Math.min(85, u.progress + 4) }
+                : u,
+            ),
+          );
+        }, 280);
 
+        const formData = new FormData();
+        formData.append("file", prepared);
+
+        const created = await uploadAndCreateHeroSlide(formData);
         if (!created.success) {
           throw new Error(created.error);
         }
+
+        if (progressTimer) clearInterval(progressTimer);
 
         setSlides((prev) =>
           [...prev, created.data].map((slide, index) => ({
@@ -409,8 +463,9 @@ export function HeroSliderManager({
         );
         toast.success(t("common.saved"));
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : t("hero_slider.upload_failed");
+        if (progressTimer) clearInterval(progressTimer);
+        const message = formatUploadError(err, t("hero_slider.upload_failed"));
+        console.error("[hero-slider-upload]", message, err);
         setUploads((prev) =>
           prev.map((u) =>
             u.id === uploadId
@@ -423,8 +478,10 @@ export function HeroSliderManager({
     }
 
     window.setTimeout(() => {
-      setUploads((prev) => prev.filter((u) => u.status === "uploading"));
-    }, 1800);
+      setUploads((prev) =>
+        prev.filter((u) => u.status === "compressing" || u.status === "uploading"),
+      );
+    }, 2200);
   };
 
   const removeSlide = (id: string) => {
@@ -607,7 +664,7 @@ export function HeroSliderManager({
           <input
             ref={inputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+            accept={HERO_SLIDE_ACCEPT_ATTR}
             multiple
             className="hidden"
             onChange={(e) => {

@@ -21,23 +21,28 @@ export function isInvalidPersistedMediaUrl(
   return false;
 }
 
-export function isSupabaseStoragePublicUrl(url: string): boolean {
+export function isSupabaseStoragePublicUrl(
+  url: string,
+  allowedBuckets: string[] = [STORAGE_BUCKET],
+): boolean {
   const base = getSupabaseUrl()?.replace(/\/$/, "");
   if (!base) return false;
 
-  const expectedPrefix = `${base}/storage/v1/object/public/${STORAGE_BUCKET}/`;
-  return url.startsWith(expectedPrefix);
+  return allowedBuckets.some((bucket) =>
+    url.startsWith(`${base}/storage/v1/object/public/${bucket}/`),
+  );
 }
 
 export function assertPersistableMediaUrl(
   url: string,
   label = "Image URL",
+  allowedBuckets: string[] = [STORAGE_BUCKET],
 ): string | null {
   if (isInvalidPersistedMediaUrl(url)) {
     return `${label} must be a public HTTPS Supabase Storage URL. Upload again from the admin panel.`;
   }
-  if (!isSupabaseStoragePublicUrl(url)) {
-    return `${label} must be uploaded to Supabase Storage (${STORAGE_BUCKET} bucket).`;
+  if (!isSupabaseStoragePublicUrl(url, allowedBuckets)) {
+    return `${label} must be uploaded to Supabase Storage (${allowedBuckets.join(" / ")}).`;
   }
   return null;
 }

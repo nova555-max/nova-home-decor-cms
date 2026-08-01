@@ -71,6 +71,9 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
+      // Hero slides allow up to 10MB; default ~1MB caused
+      // "An unexpected response was received from the server."
+      bodySizeLimit: "12mb",
       allowedOrigins: serverActionOrigins(),
     },
   },
