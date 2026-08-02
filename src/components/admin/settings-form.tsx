@@ -214,6 +214,14 @@ export function SettingsForm({
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <BrandingImageUpload
+              field="company_logo"
+              value={form.company_logo}
+              label={t("settings.company_logo")}
+              onSettingsUpdated={(updated) =>
+                syncBrandingFromSettings(updated, setForm)
+              }
+            />
+            <BrandingImageUpload
               field="favicon_url"
               value={form.favicon_url}
               label={t("settings.favicon")}
