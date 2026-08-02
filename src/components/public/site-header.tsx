@@ -65,35 +65,48 @@ export function SiteHeader({
       <div
         className={cn(
           "mx-auto flex max-w-[1400px] items-center justify-between gap-4 px-5 transition-all duration-500 md:px-10 lg:px-14",
-          scrolled ? "h-12" : "h-14",
+          scrolled ? "h-14" : "h-16 md:h-[4.5rem]",
         )}
       >
-        <Link href="/" className="flex min-w-0 items-center gap-3">
+        <Link
+          href="/"
+          className="group flex min-w-0 items-center gap-3 md:gap-3.5"
+        >
           {settings?.company_logo ? (
-            <Image
-              src={settings.company_logo}
-              alt={companyName}
-              width={44}
-              height={44}
+            <span
               className={cn(
-                "shrink-0 rounded-[14px] object-cover transition-all duration-500",
-                scrolled ? "size-9" : "size-11",
-              )}
-            />
-          ) : (
-            <div
-              className={cn(
-                "flex shrink-0 items-center justify-center rounded-[14px] bg-primary font-semibold text-primary-foreground transition-all duration-500",
-                scrolled ? "size-9 text-xs" : "size-11 text-sm",
+                "relative flex shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/15 bg-white/90 shadow-[0_8px_24px_-12px_rgba(0,0,0,0.35)] backdrop-blur-sm transition-all duration-500 dark:border-white/10 dark:bg-white/95",
+                scrolled
+                  ? "h-11 w-[7.5rem] px-2 sm:w-36"
+                  : "h-12 w-36 px-2.5 sm:h-14 sm:w-44 md:h-16 md:w-52",
               )}
             >
-              N
-            </div>
+              <Image
+                src={settings.company_logo}
+                alt={companyName}
+                fill
+                sizes="(max-width: 640px) 144px, 208px"
+                className="object-contain p-1.5 transition duration-500 group-hover:scale-[1.03] sm:p-2"
+                priority
+              />
+            </span>
+          ) : (
+            <span
+              className={cn(
+                "flex shrink-0 items-center justify-center rounded-2xl bg-primary font-semibold text-primary-foreground transition-all duration-500",
+                scrolled ? "size-11 text-sm" : "size-14 text-base",
+              )}
+            >
+              {companyName.slice(0, 1)}
+            </span>
           )}
           <span
             className={cn(
-              "truncate font-medium tracking-wide transition-all duration-500",
-              scrolled ? "text-sm text-foreground" : "text-base text-[var(--hero-nav-fg)]",
+              "truncate font-display font-medium tracking-tight transition-all duration-500",
+              scrolled
+                ? "text-base text-foreground md:text-lg"
+                : "text-lg text-[var(--hero-nav-fg)] md:text-xl",
+              settings?.company_logo && "hidden sm:inline",
             )}
           >
             {companyName}

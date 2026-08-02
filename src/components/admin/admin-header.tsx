@@ -75,18 +75,18 @@ export function AdminHeader({
       </Sheet>
 
       <div className="flex min-w-0 flex-1 items-center gap-3 md:flex-none">
-        <div className="bg-muted relative size-9 shrink-0 overflow-hidden rounded-xl">
+        <div className="relative h-11 w-28 shrink-0 overflow-hidden rounded-xl border border-border/60 bg-white/90 dark:bg-white/95">
           {settings?.company_logo ? (
             <Image
               src={settings.company_logo}
               alt={settings.company_name}
               fill
-              className="object-contain p-1"
+              className="object-contain p-1.5"
               unoptimized
             />
           ) : (
-            <div className="flex size-full items-center justify-center text-xs font-bold">
-              N
+            <div className="flex size-full items-center justify-center text-sm font-bold">
+              {settings?.company_name?.slice(0, 1) ?? "N"}
             </div>
           )}
         </div>
