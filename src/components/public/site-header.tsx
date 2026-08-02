@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Menu, Phone } from "lucide-react";
 import { motion } from "@/lib/motion";
@@ -10,7 +12,6 @@ import { t } from "@/lib/i18n";
 import { getSidebarSide } from "@/lib/rtl";
 import type { WebsiteSettings } from "@/types/database";
 import { LocaleSwitcher } from "@/components/public/locale-switcher";
-import { SiteBrandLogo } from "@/components/public/site-brand-logo";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Button } from "@/components/ui/button";
@@ -64,18 +65,40 @@ export function SiteHeader({
       <div
         className={cn(
           "mx-auto flex max-w-[1400px] items-center justify-between gap-4 px-5 transition-all duration-500 md:px-10 lg:px-14",
-          scrolled ? "h-14" : "h-16 md:h-[4.5rem]",
+          scrolled ? "h-12" : "h-14",
         )}
       >
-        <SiteBrandLogo
-          logoUrl={settings?.company_logo}
-          companyName={companyName}
-          size={scrolled ? "header-scrolled" : "header"}
-          priority
-          nameClassName={
-            scrolled ? "text-foreground" : "text-[var(--hero-nav-fg)]"
-          }
-        />
+        <Link href="/" className="flex min-w-0 items-center gap-3">
+          {settings?.company_logo ? (
+            <Image
+              src={settings.company_logo}
+              alt={companyName}
+              width={44}
+              height={44}
+              className={cn(
+                "shrink-0 rounded-[14px] object-cover transition-all duration-500",
+                scrolled ? "size-9" : "size-11",
+              )}
+            />
+          ) : (
+            <div
+              className={cn(
+                "flex shrink-0 items-center justify-center rounded-[14px] bg-primary font-semibold text-primary-foreground transition-all duration-500",
+                scrolled ? "size-9 text-xs" : "size-11 text-sm",
+              )}
+            >
+              N
+            </div>
+          )}
+          <span
+            className={cn(
+              "truncate font-medium tracking-wide transition-all duration-500",
+              scrolled ? "text-sm text-foreground" : "text-base text-[var(--hero-nav-fg)]",
+            )}
+          >
+            {companyName}
+          </span>
+        </Link>
 
         <nav className="hidden items-center gap-8 lg:flex">
           {navKeys.map((link) => (

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { Bell, Search } from "lucide-react";
 
 import { t } from "@/lib/i18n";
@@ -11,7 +12,6 @@ import type { SearchItem } from "@/types/dashboard";
 import { GlobalSearch } from "@/components/admin/global-search";
 import { UserMenu } from "@/components/admin/user-menu";
 import { LocaleSwitcher } from "@/components/public/locale-switcher";
-import { SiteBrandLogo } from "@/components/public/site-brand-logo";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Button } from "@/components/ui/button";
 import {
@@ -75,13 +75,21 @@ export function AdminHeader({
       </Sheet>
 
       <div className="flex min-w-0 flex-1 items-center gap-3 md:flex-none">
-        <SiteBrandLogo
-          logoUrl={settings?.company_logo}
-          companyName={settings?.company_name ?? "Nova Home Decor"}
-          href="/admin"
-          size="admin"
-          className="shrink-0"
-        />
+        <div className="bg-muted relative size-9 shrink-0 overflow-hidden rounded-xl">
+          {settings?.company_logo ? (
+            <Image
+              src={settings.company_logo}
+              alt={settings.company_name}
+              fill
+              className="object-contain p-1"
+              unoptimized
+            />
+          ) : (
+            <div className="flex size-full items-center justify-center text-xs font-bold">
+              N
+            </div>
+          )}
+        </div>
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold tracking-tight">
             {settings?.company_name ?? "Nova Home Decor"}

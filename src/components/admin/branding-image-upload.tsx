@@ -11,7 +11,7 @@ import {
 } from "@/lib/actions/cms";
 import { uploadBrandingWithRetry } from "@/lib/upload/client-upload";
 import { isInvalidPersistedMediaUrl } from "@/lib/media/storage-url";
-import { isImageFile, prepareImageForUpload, trimImageWhitespace } from "@/lib/image-utils";
+import { isImageFile, prepareImageForUpload } from "@/lib/image-utils";
 import { refreshPreservingScroll } from "@/lib/navigation/refresh-preserving-scroll";
 import type { WebsiteSettings } from "@/types/database";
 import { useAdminT } from "@/hooks";
@@ -65,11 +65,7 @@ export function BrandingImageUpload({
 
     startTransition(async () => {
       try {
-        const preparedBase = await prepareImageForUpload(file);
-        const prepared =
-          field === "company_logo"
-            ? await trimImageWhitespace(preparedBase)
-            : preparedBase;
+        const prepared = await prepareImageForUpload(file);
         const result = await uploadBrandingWithRetry(prepared, field);
         if (result.success && result.data) {
           onSettingsUpdated?.(result.data.settings);

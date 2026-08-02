@@ -1,7 +1,8 @@
 "use client";
 
-import type { ReactNode } from "react";
+import Image from "next/image";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import {
   Mail,
   MapPin,
@@ -18,7 +19,6 @@ import { formatOfficePublicSubtitle } from "@/lib/office-location";
 import { cn } from "@/lib/utils";
 import type { WebsiteSettings } from "@/types/database";
 import type { OfficeLocation } from "@/types/office-location";
-import { SiteBrandLogo } from "@/components/public/site-brand-logo";
 import { LazyGoogleMap } from "@/components/public/lazy-google-map";
 import { PhoneLinkList, PhoneText } from "@/components/ui/phone-link";
 import { ButtonLink } from "@/components/ui/button-link";
@@ -225,12 +225,26 @@ export function SiteFooter({ settings, locale, office }: SiteFooterProps) {
           {/* Column 1 — Brand */}
           <FooterPanel delay={0}>
             <PanelHeading>{t(locale, "footer", "brand")}</PanelHeading>
-            <SiteBrandLogo
-              logoUrl={settings?.company_logo}
-              companyName={companyName}
-              size="footer"
-              nameClassName="text-foreground"
-            />
+            <Link href="/" className="group inline-flex items-center gap-3">
+              {settings?.company_logo ? (
+                <span className="relative size-14 overflow-hidden rounded-2xl border border-[var(--gold)]/20 bg-background/40 shadow-sm">
+                  <Image
+                    src={settings.company_logo}
+                    alt={companyName}
+                    fill
+                    className="object-contain p-1.5 transition duration-500 group-hover:scale-105"
+                    sizes="56px"
+                  />
+                </span>
+              ) : (
+                <span className="flex size-14 items-center justify-center rounded-2xl border border-[var(--gold)]/25 bg-[var(--gold)]/10 font-display text-xl text-[var(--gold)]">
+                  {companyName.slice(0, 1)}
+                </span>
+              )}
+              <span className="font-display text-xl font-medium tracking-tight text-foreground transition group-hover:text-[var(--gold)] md:text-2xl">
+                {companyName}
+              </span>
+            </Link>
             <p className="text-muted-foreground mt-5 line-clamp-2 text-sm leading-relaxed md:text-[15px]">
               {description}
             </p>
