@@ -1,8 +1,7 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
 import type { ReactNode } from "react";
+import Link from "next/link";
 import {
   Mail,
   MapPin,
@@ -19,6 +18,7 @@ import { formatOfficePublicSubtitle } from "@/lib/office-location";
 import { cn } from "@/lib/utils";
 import type { WebsiteSettings } from "@/types/database";
 import type { OfficeLocation } from "@/types/office-location";
+import { SiteBrandLogo } from "@/components/public/site-brand-logo";
 import { LazyGoogleMap } from "@/components/public/lazy-google-map";
 import { PhoneLinkList, PhoneText } from "@/components/ui/phone-link";
 import { ButtonLink } from "@/components/ui/button-link";
@@ -225,26 +225,12 @@ export function SiteFooter({ settings, locale, office }: SiteFooterProps) {
           {/* Column 1 — Brand */}
           <FooterPanel delay={0}>
             <PanelHeading>{t(locale, "footer", "brand")}</PanelHeading>
-            <Link href="/" className="group inline-flex max-w-full items-center gap-4">
-              {settings?.company_logo ? (
-                <span className="relative h-16 w-44 shrink-0 overflow-hidden rounded-[22px] border border-[var(--gold)]/25 bg-white/90 shadow-[0_12px_32px_-16px_rgba(0,0,0,0.35)] dark:bg-white/95 sm:h-[4.5rem] sm:w-52">
-                  <Image
-                    src={settings.company_logo}
-                    alt={companyName}
-                    fill
-                    className="object-contain p-2.5 transition duration-500 group-hover:scale-105"
-                    sizes="208px"
-                  />
-                </span>
-              ) : (
-                <span className="flex size-16 shrink-0 items-center justify-center rounded-[22px] border border-[var(--gold)]/25 bg-[var(--gold)]/10 font-display text-2xl text-[var(--gold)]">
-                  {companyName.slice(0, 1)}
-                </span>
-              )}
-              <span className="font-display text-xl font-medium tracking-tight text-foreground transition group-hover:text-[var(--gold)] md:text-2xl">
-                {companyName}
-              </span>
-            </Link>
+            <SiteBrandLogo
+              logoUrl={settings?.company_logo}
+              companyName={companyName}
+              size="footer"
+              nameClassName="text-foreground"
+            />
             <p className="text-muted-foreground mt-5 line-clamp-2 text-sm leading-relaxed md:text-[15px]">
               {description}
             </p>

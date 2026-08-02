@@ -122,6 +122,87 @@ export async function prepareImageForUpload(file: File): Promise<File> {
   return file;
 }
 
+/** Crop empty white/black padding from logo-like images before upload. */
+export async function trimImageWhitespace(file: File): Promise<File> {
+  if (!isImageFile(file)) return file;
+
+  try {
+    const img = await loadImageFromFile(file);
+    const w = img.naturalWidth;
+    const h = img.naturalHeight;
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return file;
+    ctx.drawImage(img, 0, 0);
+    const { data: px } = ctx.getImageData(0, 0, w, h);
+
+    const isEmpty = (i: number) => {
+      const r = px[i];
+      const g = px[i + 1];
+      const b = px[i + 2];
+      const a = px[i + 3];
+      if (a < 12) return true;
+      if (r > 245 && g > 245 && b > 245) return true;
+      if (r < 12 && g < 12 && b < 12) return true;
+      return false;
+    };
+
+    let top = 0;
+    let bottom = h - 1;
+    let left = 0;
+    let right = w - 1;
+
+    outerTop: for (; top < h; top += 1) {
+      for (let x = 0; x < w; x += 1) {
+        if (!isEmpty((top * w + x) * 4)) break outerTop;
+      }
+    }
+    outerBottom: for (; bottom > top; bottom -= 1) {
+      for (let x = 0; x < w; x += 1) {
+        if (!isEmpty((bottom * w + x) * 4)) break outerBottom;
+      }
+    }
+    outerLeft: for (; left < w; left += 1) {
+      for (let y = top; y <= bottom; y += 1) {
+        if (!isEmpty((y * w + left) * 4)) break outerLeft;
+      }
+    }
+    outerRight: for (; right > left; right -= 1) {
+      for (let y = top; y <= bottom; y += 1) {
+        if (!isEmpty((y * w + right) * 4)) break outerRight;
+      }
+    }
+
+    const pad = 10;
+    const sx = Math.max(0, left - pad);
+    const sy = Math.max(0, top - pad);
+    const sw = Math.min(w - sx, right - left + 1 + pad * 2);
+    const sh = Math.min(h - sy, bottom - top + 1 + pad * 2);
+
+    if (sw > w * 0.92 && sh > h * 0.92) return file;
+    if (sw < 8 || sh < 8) return file;
+
+    const out = document.createElement("canvas");
+    out.width = sw;
+    out.height = sh;
+    const octx = out.getContext("2d");
+    if (!octx) return file;
+    octx.drawImage(canvas, sx, sy, sw, sh, 0, 0, sw, sh);
+
+    const blob = await new Promise<Blob | null>((resolve) =>
+      out.toBlob(resolve, "image/png"),
+    );
+    if (!blob) return file;
+
+    const base = file.name.replace(/\.[^.]+$/, "") || "logo";
+    return new File([blob], `${base}.png`, { type: "image/png" });
+  } catch {
+    return file;
+  }
+}
+
 /** @deprecated Use prepareImageForUpload */
 export async function compressImage(file: File): Promise<File> {
   try {
